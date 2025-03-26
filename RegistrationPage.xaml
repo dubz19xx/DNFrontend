@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Test1.RegistrationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Test1"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="RegistrationPage">
+
+    <Grid>
+        <Image Source="Assets\bg.png" Stretch="UniformToFill" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\Pixel-7-Wallpaper-1.jpg" Stretch="UniformToFill"/>
+
+
+            <StackPanel VerticalAlignment="Center">
+
+
+                <TextBlock Text="Welcome Back!" FontWeight="Bold" FontSize="48" Margin="8,0,0,0"/>
+                <TextBlock FontSize="20" Margin="8,16,0,0" >Login To Your Account
+                    To Access Your Files
+                </TextBlock>
+
+            </StackPanel>
+
+
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Name="Reg" Text="Registeration Page" Foreground="White" TextAlignment="Center" FontSize="48"></TextBlock>
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock Text="UserName : " Foreground="White" FontFamily="SF Pro Text"  Margin="0,50,0,0"/>
+                    <TextBox Name="UsernameTextBox" FontFamily="SF Pro Text" PlaceholderText="Enter UserName" Width="300" Margin="0,50,0,0"></TextBox>
+                </StackPanel>
+
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock Text="Email : " Foreground="White" FontFamily="SF Pro Text"  Margin="0,50,0,0"/>
+                    <TextBox Name="EmailTextBox" FontFamily="SF Pro Text" PlaceholderText="Enter Email" Width="300" Margin="0,50,0,0"></TextBox>
+                </StackPanel>
+
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock Text="Password : " Foreground="White" FontFamily="SF Pro Text"  Margin="0,50,0,0"/>
+                    <PasswordBox x:Name="PassWord" FontFamily="SF Pro Text" PlaceholderText="Enter Password" Width="300" Margin="0,50,0,0"></PasswordBox>
+
+
+                </StackPanel>
+
+
+
+
+
+                <RelativePanel x:Name="inside" Grid.Row="1"  
+         HorizontalAlignment="Center" Margin="0,20,0,0">
+
+                    <Button x:Name="savebtn" Foreground="White" FontFamily="SF Pro Text" Content="Register" MinHeight="50" MinWidth="70" Click="savebtn_Click"></Button>
+
+                    <Button x:Name="cancelbtn" Foreground="White" FontFamily="SF Pro Text" Content="Cancel"  
+             MinHeight="50" MinWidth="70" RelativePanel.RightOf="savebtn"  
+             Margin="10,0,0,0" Click="cancelbtn_Click"></Button>
+
+                </RelativePanel>
+
+                <TextBlock Name="ErrorMessageTextBlock" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,100,0,0" FontStyle="Oblique" FontFamily="SF Pro Text SemiBold" Foreground="Red"/>
+
+
+            </StackPanel>
+
+        </Grid>
+
+
+    </Grid>
+</Window>
