@@ -18,6 +18,7 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using System.ComponentModel;
 using Windows.Storage;
+using Windows.Media.Protection.PlayReady;
 
 namespace Test1
 {
@@ -43,6 +44,7 @@ namespace Test1
 
     public class Block
     {
+        private string selfAddy;
         public int Index { get; set; }
         public DateTime Timestamp { get; set; }
         public string PreviousHash { get; set; }
@@ -116,13 +118,12 @@ namespace Test1
             LatestBlock = GenesisBlock;
             blockchainCopy.Add(LatestBlock);
 
-
         }
 
-        public async Task InitializeBC(string uname)
+        public async Task InitializeBC(string uname, string addy)
         {
             await DownloadBlocks();
-            await ListenerThread(uname, 3120);
+            await ListenerThread(uname, addy);
         }
 
 
@@ -300,7 +301,7 @@ namespace Test1
         }
 
 
-        public static async Task ListenerThread(string uname, int listenPort)
+        public static async Task ListenerThread(string uname, string selfaddy)
         {
             string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             string dnStorePath = Path.Combine(documentsPath, "DNStore");
@@ -312,9 +313,30 @@ namespace Test1
                 Directory.CreateDirectory(storageFolder);
             }
 
-            using (UdpClient udpListener = new UdpClient(3120))
+            HttpClient client = new HttpClient();
+            
+            // Accept self-signed certs for localhost
+            HttpClientHandler handler = new HttpClientHandler
             {
-                Console.WriteLine($"Listening for incoming requests on port {listenPort}...");
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+
+            client.BaseAddress = new Uri("https://dbserver01.azurewebsites.net");
+            client.DefaultRequestHeaders.Accept.Clear();
+            string getportstring = "/api/OnlineNodes/" + selfaddy;
+
+            HttpResponseMessage response = await client.GetAsync(getportstring);
+            response.EnsureSuccessStatusCode();
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            OnlineNode selfnode = JsonConvert.DeserializeObject<OnlineNode>(jsonResponse);
+            int punchedPort = selfnode.port;
+
+
+            using (UdpClient udpListener = new UdpClient(punchedPort))
+            {
+                Console.WriteLine($"Listening for incoming requests on port ...");
 
                 while (true)
                 {

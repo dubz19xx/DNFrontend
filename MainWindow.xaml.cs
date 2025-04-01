@@ -126,11 +126,11 @@ namespace Test1
 
         }
 
-        public async void InitalizeBlockchain()
+        public async void InitalizeBlockchain(string selfaddress)
         {
 
             bc = new Blockchain();
-            await bc.InitializeBC(uname: MainpageUsername.ToString());
+            await bc.InitializeBC(uname: MainpageUsername.ToString(), selfaddress);
         }
 
         private async void FabButton_Click(object sender, RoutedEventArgs e)

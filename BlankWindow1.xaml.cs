@@ -73,7 +73,7 @@ namespace Test1
                     MainWindow m_window = new MainWindow();
 
                     m_window.UpdateUI(username, selfAddress);
-                    m_window.InitalizeBlockchain();
+                    m_window.InitalizeBlockchain(selfAddress);
                     m_window.Activate();
 
                     this.Close();
