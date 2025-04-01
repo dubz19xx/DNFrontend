@@ -218,13 +218,15 @@ namespace Test1
                 byte[] requestMessage = Encoding.UTF8.GetBytes(message);
 
                 // Send request to the node's IP and port
-                await udpClient.SendAsync(requestMessage, node.ipAddress, node.port);
+                IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Parse(node.ipAddress), node.port);
+                int xyz = udpClient.Send(requestMessage, requestMessage.Length, remoteEndPoint);
 
                 // Listen for the response (receive the blockchain)
-                var response = await ReceiveBlockchainResponse(udpClient);
+                var responseData = udpClient.Receive(ref remoteEndPoint);
 
+                Console.WriteLine(responseData);
                 // Process the received blockchain response (this will update the blockchain)
-                UpdateBlockchainFromJson(response);
+                //UpdateBlockchainFromJson(responseData);
             }
         }
 
@@ -333,20 +335,22 @@ namespace Test1
             OnlineNode selfnode = JsonConvert.DeserializeObject<OnlineNode>(jsonResponse);
             int punchedPort = selfnode.port;
 
+            string localIp = "0.0.0.0"; 
 
             using (UdpClient udpListener = new UdpClient(punchedPort))
             {
                 Console.WriteLine($"Listening for incoming requests on port ...");
-
+                IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(localIp), punchedPort);
                 while (true)
                 {
                     try
                     {
                         // Wait for an incoming request
-                        UdpReceiveResult result = await udpListener.ReceiveAsync();
-                        string requestMessage = Encoding.UTF8.GetString(result.Buffer);
+                        byte[] receivedData = udpListener.Receive(ref localEndPoint);
+
+                        string requestMessage = Encoding.UTF8.GetString(receivedData);
                         string[] parts = requestMessage.Split(new[] { '\n' }, 2, StringSplitOptions.None);
-                        Console.WriteLine($"Received request: {requestMessage} from {result.RemoteEndPoint}");
+                        //Console.WriteLine($"Received request: {requestMessage} from {result.RemoteEndPoint}");
                         string command = parts[0];
                         byte[] sharedData = Encoding.UTF8.GetBytes(parts[1]);
                         // Process the request
@@ -366,9 +370,9 @@ namespace Test1
                             byte[] responseData = Encoding.UTF8.GetBytes(blockchainJson);
 
                             // Send the blockchain data as a response
-                            await udpListener.SendAsync(responseData, responseData.Length, result.RemoteEndPoint);
+                            //await udpListener.SendAsync(responseData, responseData.Length, result.RemoteEndPoint);
 
-                            Console.WriteLine($"Sent blockchain data to {result.RemoteEndPoint}");
+                            //Console.WriteLine($"Sent blockchain data to {result.RemoteEndPoint}");
                         }
 
                         else if (command == "STORE_SHARD")
@@ -378,7 +382,7 @@ namespace Test1
 
                             // Respond to acknowledge that the shard has been stored
                             byte[] responseMessage = Encoding.UTF8.GetBytes("SHARD_RECEIVED");
-                            await udpListener.SendAsync(responseMessage, responseMessage.Length, result.RemoteEndPoint);
+                            //await udpListener.SendAsync(responseMessage, responseMessage.Length, result.RemoteEndPoint);
 
                         }
 
