@@ -84,11 +84,13 @@ namespace Test1
     public sealed partial class MainWindow : Window
     {
 
+        Blockchain bc;
+
         private ObservableCollection<FileItem> files = new ObservableCollection<FileItem>();
         public MainWindow()
         {
             this.InitializeComponent();
-            FileListView.ItemsSource = files;
+            //FileListView.ItemsSource = files;
             this.Closed += MainWindow_Closed;
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
@@ -98,9 +100,6 @@ namespace Test1
 
 
             appWindow.Resize(new SizeInt32(1200, 775));
-
-
-
         }
 
         public class FileItem
@@ -125,8 +124,13 @@ namespace Test1
             UdpBackgroundPinger.StartBackgroundPinging(serverIp, serverPort, clientId, 20);
 
 
-            Blockchain blockchain = new Blockchain();
-            await blockchain.InitializeBC();
+        }
+
+        public async void InitalizeBlockchain()
+        {
+
+            bc = new Blockchain();
+            await bc.InitializeBC(uname: MainpageUsername.ToString());
         }
 
         private async void FabButton_Click(object sender, RoutedEventArgs e)

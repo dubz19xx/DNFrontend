@@ -119,10 +119,10 @@ namespace Test1
 
         }
 
-        public async Task InitializeBC()
+        public async Task InitializeBC(string uname)
         {
             await DownloadBlocks();
-            await ListenerThread(3120);
+            await ListenerThread(uname, 3120);
         }
 
 
@@ -191,7 +191,7 @@ namespace Test1
 
                 string jsonResponse = await response.Content.ReadAsStringAsync();
 
-                var nodes = JsonConvert.DeserializeObject<List<OnlineNode>>(jsonResponse);
+                List<OnlineNode> nodes = JsonConvert.DeserializeObject<List<OnlineNode>>(jsonResponse);
 
                 return nodes;
 
@@ -217,7 +217,7 @@ namespace Test1
                 byte[] requestMessage = Encoding.UTF8.GetBytes(message);
 
                 // Send request to the node's IP and port
-                await udpClient.SendAsync(requestMessage, requestMessage.Length, node.ipAddress, node.port);
+                await udpClient.SendAsync(requestMessage, node.ipAddress, node.port);
 
                 // Listen for the response (receive the blockchain)
                 var response = await ReceiveBlockchainResponse(udpClient);
@@ -230,7 +230,7 @@ namespace Test1
         public static async Task DownloadBlocks()
         {
             List<OnlineNode> onlineNodes = await GetOnlineNodes();
-            if (onlineNodes.Count != 0)
+            if (onlineNodes.Count > 1)
             {
 
                 foreach (var node in onlineNodes)
@@ -300,9 +300,12 @@ namespace Test1
         }
 
 
-        public static async Task ListenerThread(int listenPort)
+        public static async Task ListenerThread(string uname, int listenPort)
         {
-            string storageFolder = Path.Combine(Directory.GetCurrentDirectory(), "storeddata");
+            string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string dnStorePath = Path.Combine(documentsPath, "DNStore");
+            string userFolderPath = Path.Combine(dnStorePath, uname);
+            string storageFolder = Path.Combine(userFolderPath, "storage");
 
             if (!Directory.Exists(storageFolder))
             {
