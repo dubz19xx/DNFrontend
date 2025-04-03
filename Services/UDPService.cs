@@ -108,7 +108,7 @@ namespace Test1.Services
                     else if (recData.StartsWith("PUNCH"))
                     {
                         byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
-                        await SendAsync(msg, result.RemoteEndPoint);
+                        //await SendAsync(msg, result.RemoteEndPoint);
                     }
                     else if (recData.StartsWith("DOWNLOADBC"))
                     {
@@ -191,27 +191,45 @@ namespace Test1.Services
 
         private void ProcessCompleteMessage(byte[] fullData, IPEndPoint sender, string prefix)
         {
-            string fullMessage = Encoding.UTF8.GetString(fullData);
-
-            // Route to appropriate handler
-            switch (prefix)
+            try
             {
-                case "SAVESHARD":
-                    string saveData = fullMessage.Split('|')[1];
-                    FileHelper.SaveShardLocally(saveData);
-                    break;
-                case "TAKEBC":
-                    string newBlockchain = fullMessage.Split('|')[1];
-                    List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
-                    Blockchain.blockchain = deserializedBC;
-                    break;
-                    // Add other message types as needed
+                string fullMessage = Encoding.UTF8.GetString(fullData);
+
+                // Remove the CHUNKED header if present
+                if (fullMessage.StartsWith("CHUNKED|"))
+                {
+                    // Find the original prefix position
+                    int prefixIndex = fullMessage.IndexOf(prefix + "|");
+                    if (prefixIndex > 0)
+                    {
+                        // Extract everything after the original prefix
+                        fullMessage = fullMessage.Substring(prefixIndex);
+                    }
+                }
+
+                // Route to appropriate handler
+                switch (prefix)
+                {
+                    case "SAVESHARD":
+                        string saveData = fullMessage.Split('|')[1]; // Now correctly gets "somedata"
+                        FileHelper.SaveShardLocally(saveData);
+                        break;
+                    case "TAKEBC":
+                        string newBlockchain = fullMessage.Split('|')[1];
+                        List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
+                        Blockchain.blockchain = deserializedBC;
+                        break;
+                        // Add other message types as needed
+                }
+
+                LogMessage?.Invoke($"Processed complete {prefix} message from {sender}");
+                DataReceived?.Invoke(sender, Encoding.UTF8.GetBytes(fullMessage));
             }
-
-            LogMessage?.Invoke($"Processed complete {prefix} message from {sender}");
-            DataReceived?.Invoke(sender, fullData);
+            catch (Exception ex)
+            {
+                LogMessage?.Invoke($"Error processing complete message: {ex.Message}");
+            }
         }
-
         private void CleanupIncompleteMessages(object state)
         {
             var now = DateTime.UtcNow;
