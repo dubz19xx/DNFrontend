@@ -113,7 +113,7 @@ namespace Test1.Services
                     {
                         string uploadBC = JsonConvert.SerializeObject(Blockchain.GetBlockchain());
                         string msg = "TAKEBC|" + uploadBC;
-                        await SendAsync(Encoding.UTF8.GetBytes(uploadBC), result.RemoteEndPoint); 
+                        await SendAsync(Encoding.UTF8.GetBytes(msg), result.RemoteEndPoint); 
                     }
 
                     if (recData.StartsWith("TAKEBC|"))
