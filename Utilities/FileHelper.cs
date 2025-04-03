@@ -322,8 +322,17 @@ namespace Test1.Utilities
 
                 await Blockchain.p2pService.PunchPeers(tempList);
 
-                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD|", Encoding.UTF8.GetString(encryptedData));
+                // Create the binary message with prefix
+                byte[] prefixBytes = Encoding.UTF8.GetBytes("SAVESHARD|");
+                byte[] message = new byte[prefixBytes.Length + encryptedData.Length];
+                Buffer.BlockCopy(prefixBytes, 0, message, 0, prefixBytes.Length);
+                Buffer.BlockCopy(encryptedData, 0, message, prefixBytes.Length, encryptedData.Length);
 
+                // Send via P2PService
+                await Blockchain.p2pService.SendUDPmsg(
+                    selectedNode.ipAddress,
+                    selectedNode.port,
+                    message);  // Note: Changed to accept raw bytes
 
 
 
@@ -376,34 +385,32 @@ namespace Test1.Utilities
 
 
 
-        public static void SaveShardLocally(string shardString)
-
+        public static void SaveShardLocally(byte[] shardData)
         {
+            try
+            {
+                // Generate hash-based filename
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] hashBytes = sha256.ComputeHash(shardData);
+                    string shardName = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+                    string shardPath = Path.Combine(mainstoragePath, shardName + ".shard");
 
-            //save shard to folder
+                    // Ensure directory exists
+                    Directory.CreateDirectory(mainstoragePath);
 
-            byte[] shardBytes = Encoding.UTF8.GetBytes(shardString);
+                    // Write binary data directly
+                    File.WriteAllBytes(shardPath, shardData);
 
-            SHA256 sha256 = SHA256.Create();
-
-            byte[] shardhash = sha256.ComputeHash(shardBytes);
-
-            string shardname = Encoding.UTF8.GetString(shardhash);
-
-            string shardPath = mainstoragePath + shardname;
-
-            File.WriteAllBytes(shardPath, shardBytes);
-
-
-
-            //create transaction
-
-
-
-            //broadcast transaction
-
+                    Console.WriteLine($"Shard saved to: {shardPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving shard: {ex.Message}");
+                throw;
+            }
         }
-
     }
 
 }

@@ -193,43 +193,37 @@ namespace Test1.Services
         {
             try
             {
-                string fullMessage = Encoding.UTF8.GetString(fullData);
-
-                // Remove the CHUNKED header if present
-                if (fullMessage.StartsWith("CHUNKED|"))
+                // For SAVESHARD messages, we expect binary data after the prefix
+                if (prefix == "SAVESHARD")
                 {
-                    // Find the original prefix position
-                    int prefixIndex = fullMessage.IndexOf(prefix + "|");
-                    if (prefixIndex > 0)
+                    // Find where the actual binary data starts (after "SAVESHARD|")
+                    int dataStart = Encoding.UTF8.GetBytes("SAVESHARD|").Length;
+                    if (dataStart >= fullData.Length)
                     {
-                        // Extract everything after the original prefix
-                        fullMessage = fullMessage.Substring(prefixIndex);
+                        LogMessage?.Invoke("Invalid SAVESHARD format");
+                        return;
                     }
-                }
 
-                // Route to appropriate handler
-                switch (prefix)
+                    byte[] shardData = new byte[fullData.Length - dataStart];
+                    Buffer.BlockCopy(fullData, dataStart, shardData, 0, shardData.Length);
+
+                    FileHelper.SaveShardLocally(shardData);
+                }
+                else if (prefix == "TAKEBC")
                 {
-                    case "SAVESHARD":
-                        string saveData = fullMessage.Split('|')[1]; // Now correctly gets "somedata"
-                        FileHelper.SaveShardLocally(saveData);
-                        break;
-                    case "TAKEBC":
-                        string newBlockchain = fullMessage.Split('|')[1];
-                        List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
-                        Blockchain.blockchain = deserializedBC;
-                        break;
-                        // Add other message types as needed
+                    string fullMessage = Encoding.UTF8.GetString(fullData);
+                    string newBlockchain = fullMessage.Split('|')[1];
+                    List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
+                    Blockchain.blockchain = deserializedBC;
                 }
-
-                LogMessage?.Invoke($"Processed complete {prefix} message from {sender}");
-                DataReceived?.Invoke(sender, Encoding.UTF8.GetBytes(fullMessage));
+                // Add other message types as needed
             }
             catch (Exception ex)
             {
-                LogMessage?.Invoke($"Error processing complete message: {ex.Message}");
+                LogMessage?.Invoke($"Error processing {prefix} message: {ex.Message}");
             }
         }
+
         private void CleanupIncompleteMessages(object state)
         {
             var now = DateTime.UtcNow;
