@@ -99,6 +99,16 @@ namespace Test1.Services
                         }
                     }
 
+                    if (recData.StartsWith("PUNCH"))
+                    {
+
+                        byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
+                        
+                        await SendAsync(msg, result.RemoteEndPoint);
+                        
+
+                    }
+
                     if (recData.StartsWith("DOWNLOADBC"))
                     {
                         string uploadBC = JsonConvert.SerializeObject(Blockchain.GetBlockchain());
