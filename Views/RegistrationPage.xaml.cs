@@ -59,7 +59,7 @@ namespace Test1
                 ErrorMessageTextBlock.Text = responseContent;
             else
             {
-                fileHelper.SetupFolders();
+                fileHelper.SetupRegistrationFolders();
                 string masterKey = CryptHelper.GenerateMasterKey(32);
                 fileHelper.SaveMasterKey(masterKey);
 

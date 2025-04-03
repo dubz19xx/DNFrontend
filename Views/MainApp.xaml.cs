@@ -97,7 +97,7 @@ namespace Test1
             if (file != null)
             {
 
-                FileHelper.UploadFile(file);
+                await FileHelper.UploadFile(file);
                 var properties = await file.GetBasicPropertiesAsync();
                 double fileSize = properties.Size / 1024;  // Get file size
                 string filesizeinkb = $"{fileSize:F2} KB";

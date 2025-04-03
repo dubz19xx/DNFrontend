@@ -29,6 +29,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Newtonsoft.Json;
 using Test1.Services;
+using Test1.Utilities;
 
 namespace Test1
 {
@@ -50,6 +51,8 @@ namespace Test1
                 ErrorMessageTextBlock.Text = "Invalid username or password.";
             else
             {
+                FileHelper fileHelper = new FileHelper(UsernameTextBox.Text);
+                fileHelper.SetupLoginFolders();
                 MainAppPage mainAppWindow = new MainAppPage(UsernameTextBox.Text, authResult);
                 mainAppWindow.Activate();
                 this.Close();

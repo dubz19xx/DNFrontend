@@ -29,24 +29,35 @@ namespace Test1.Utilities
             configPath = Path.Combine(userFolderPath, "config");
         }
 
-        public void SetupFolders()
+        // Modified to only create config folder during registration
+        public void SetupRegistrationFolders()
         {
             if (!Directory.Exists(dnStorePath))
                 Directory.CreateDirectory(dnStorePath);
 
             if (!Directory.Exists(userFolderPath))
                 Directory.CreateDirectory(userFolderPath);
-   
-            if (!Directory.Exists(mainstoragePath))
-                Directory.CreateDirectory(mainstoragePath);
-   
-            if (!Directory.Exists(uploadqueuePath))
-                Directory.CreateDirectory(uploadqueuePath);
 
+            // Only create config folder during registration
             if (!Directory.Exists(configPath))
                 Directory.CreateDirectory(configPath);
         }
 
+        // New method for login-time folder setup
+        public void SetupLoginFolders()
+        {
+            // Verify master key exists first
+            string secretFile = Path.Combine(configPath, "secret.txt");
+            if (!File.Exists(secretFile))
+                throw new InvalidOperationException("Master key not found - invalid user folder");
+
+            // Create remaining folders
+            if (!Directory.Exists(mainstoragePath))
+                Directory.CreateDirectory(mainstoragePath);
+
+            if (!Directory.Exists(uploadqueuePath))
+                Directory.CreateDirectory(uploadqueuePath);
+        }
         public void SaveMasterKey(string mKey)
         {
             string secretfile = Path.Combine(configPath, "secret.txt");
