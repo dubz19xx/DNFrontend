@@ -134,7 +134,7 @@ namespace Test1.Utilities
 
         {
 
-            const int chunkSize = 256 * 1024; // 256 KB
+            const int chunkSize = 60 * 1024; // 256 KB
 
             byte[] buffer = new byte[chunkSize];
 
@@ -273,10 +273,6 @@ namespace Test1.Utilities
             Console.WriteLine($"Chunk hashes written to: {hashFilepath}");
 
         }
-
-
-
-
 
 
 
