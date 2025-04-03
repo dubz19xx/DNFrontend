@@ -42,7 +42,6 @@ namespace Test1.Services
 
         private bool _isDisposed;
 
-        public IPEndPoint LocalEndPoint => (IPEndPoint)_udpClient.Client.LocalEndPoint;
 
 
         public event Action<string> LogMessage;
