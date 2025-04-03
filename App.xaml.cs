@@ -41,7 +41,7 @@ namespace Test1
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            m_window = new BlankWindow1();
+            m_window = new LoginPage();
             m_window.Activate();
         }
 
