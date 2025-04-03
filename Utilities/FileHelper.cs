@@ -134,7 +134,7 @@ namespace Test1.Utilities
 
         {
 
-            const int chunkSize = 60 * 1024; // 256 KB
+            const int chunkSize = 256 * 1024; // 256 KB
 
             byte[] buffer = new byte[chunkSize];
 
@@ -322,7 +322,7 @@ namespace Test1.Utilities
 
                 await Blockchain.p2pService.PunchPeers(tempList);
 
-                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD", Encoding.UTF8.GetString(encryptedData));
+                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD|", Encoding.UTF8.GetString(encryptedData));
 
 
 
