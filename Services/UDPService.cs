@@ -124,10 +124,22 @@ namespace Test1.Services
                     }
                     else if (recData.StartsWith("SAVESHARD|"))
                     {
-                        string saveData = recData.Split('|')[1];
-                        FileHelper.SaveShardLocally(saveData);
-                    }
+                        // Find where the payload starts (after "SAVESHARD|")
+                        int headerLength = Encoding.UTF8.GetBytes("SAVESHARD|").Length;
 
+                        if (result.Buffer.Length <= headerLength)
+                        {
+                            LogMessage?.Invoke("Invalid SAVESHARD message - no payload");
+                            continue;
+                        }
+
+                        // Extract the binary payload
+                        byte[] shardData = new byte[result.Buffer.Length - headerLength];
+                        Buffer.BlockCopy(result.Buffer, headerLength, shardData, 0, shardData.Length);
+
+                        // Save the binary data directly
+                        FileHelper.SaveShardLocally(shardData);
+                    }
                     LogMessage?.Invoke($"Received {result.Buffer.Length} bytes from {result.RemoteEndPoint}");
                     DataReceived?.Invoke(result.RemoteEndPoint, result.Buffer);
                 }
