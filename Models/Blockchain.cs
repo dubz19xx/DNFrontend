@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Windows.Foundation;
 using Test1.Services;
 using Windows.ApplicationModel.Store.Preview.InstallControl;
+using System.Net;
 
 namespace Test1.Models
 {
@@ -55,6 +56,9 @@ namespace Test1.Models
             //start udp listener and puncher
             udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
+            
+            int port = ((IPEndPoint)udpService.LocalEndPoint).Port;
+            p2pService.StartTcpListener(port);
 
             udpService.StartHolePunchingAsync();
 

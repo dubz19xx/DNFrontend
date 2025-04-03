@@ -162,8 +162,7 @@ namespace Test1.Utilities
                 List<OnlineNode> tempList = new List<OnlineNode>();
                 tempList.Add(selectedNode);
                 await Blockchain.p2pService.PunchPeers(tempList);
-                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD|", Encoding.UTF8.GetString(encryptedData));
-
+                await Blockchain.p2pService.SendShardViaTcp(selectedNode.ipAddress, selectedNode.port, encryptedData);
 
                 //OnlineNode selectedNode = await GetRandomOnlineNodeAsync();
                 //await SendEncryptedDataAsync(selectedNode, encryptedData);

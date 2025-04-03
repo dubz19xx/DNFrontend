@@ -20,7 +20,7 @@ namespace Test1.Services
         private readonly int _intervalSeconds;
         private CancellationTokenSource _cts;
         private bool _isDisposed;
-
+        public IPEndPoint LocalEndPoint => (IPEndPoint)_udpClient.Client.LocalEndPoint;
         public event Action<string> LogMessage;
         public event Action<IPEndPoint, byte[]> DataReceived;
 
