@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -82,49 +83,93 @@ namespace Test1.Services
 
         private async Task ReceiveLoopAsync()
         {
+            // Dictionary to hold incomplete messages (key = messageId, value = chunks)
+            Dictionary<string, List<byte[]>> incompleteMessages = new Dictionary<string, List<byte[]>>();
+
             try
             {
                 while (!_cts.Token.IsCancellationRequested)
                 {
                     var result = await _udpClient.ReceiveAsync(_cts.Token);
                     string recData = Encoding.UTF8.GetString(result.Buffer);
+
+                    // Handle chunked messages
+                    if (recData.Contains("|CHUNKED|"))
+                    {
+                        string[] parts = recData.Split('|');
+                        string prefix = parts[0];
+                        int chunkIndex = int.Parse(parts[2]);
+                        int totalChunks = int.Parse(parts[3]);
+
+                        // Extract the actual chunk data (everything after the header)
+                        int headerLength = parts[0].Length + parts[1].Length + parts[2].Length + parts[3].Length + 4; // +4 for the | separators
+                        byte[] chunkData = new byte[result.Buffer.Length - headerLength];
+                        Array.Copy(result.Buffer, headerLength, chunkData, 0, chunkData.Length);
+
+                        // Create a unique message ID based on sender and prefix
+                        string messageId = $"{result.RemoteEndPoint}-{prefix}";
+
+                        if (!incompleteMessages.ContainsKey(messageId))
+                        {
+                            incompleteMessages[messageId] = new List<byte[]>(new byte[totalChunks][]);
+                        }
+
+                        // Store the chunk
+                        incompleteMessages[messageId][chunkIndex] = chunkData;
+
+                        // Check if all chunks have arrived
+                        if (incompleteMessages[messageId].All(c => c != null))
+                        {
+                            // Reassemble the complete message
+                            int totalLength = incompleteMessages[messageId].Sum(c => c.Length);
+                            byte[] completeMessage = new byte[totalLength];
+                            int offset = 0;
+                            foreach (var chunk in incompleteMessages[messageId])
+                            {
+                                Buffer.BlockCopy(chunk, 0, completeMessage, offset, chunk.Length);
+                                offset += chunk.Length;
+                            }
+
+                            // Remove from incomplete messages
+                            incompleteMessages.Remove(messageId);
+
+                            // Process the complete message
+                            string completeData = Encoding.UTF8.GetString(completeMessage);
+                            await ProcessCompleteMessage(completeData, result.RemoteEndPoint);
+                        }
+                        continue;
+                    }
+
+                    // Handle non-chunked messages (your existing code)
                     if (recData.StartsWith("PUNCHPEER|"))
                     {
                         string peerIP = recData.Split('|')[1];
                         string peerPort = recData.Split('|')[2];
                         IPEndPoint nodeEndpoint = new IPEndPoint(IPAddress.Parse(peerIP), int.Parse(peerPort));
                         byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
-                        for(int i = 0; i < 3; i++)
+                        for (int i = 0; i < 3; i++)
                         {
                             await SendAsync(msg, nodeEndpoint);
                         }
                     }
-
-                    if (recData.StartsWith("PUNCH"))
+                    else if (recData.StartsWith("PUNCH"))
                     {
-
                         byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
-                        
                         await SendAsync(msg, result.RemoteEndPoint);
-                        
-
                     }
-
-                    if (recData.StartsWith("DOWNLOADBC"))
+                    else if (recData.StartsWith("DOWNLOADBC"))
                     {
                         string uploadBC = JsonConvert.SerializeObject(Blockchain.GetBlockchain());
                         string msg = "TAKEBC|" + uploadBC;
-                        await SendAsync(Encoding.UTF8.GetBytes(msg), result.RemoteEndPoint); 
+                        await SendAsync(Encoding.UTF8.GetBytes(msg), result.RemoteEndPoint);
                     }
-
-                    if (recData.StartsWith("TAKEBC|"))
+                    else if (recData.StartsWith("TAKEBC|"))
                     {
                         string newBlockchain = recData.Split('|')[1];
                         List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
                         Blockchain.blockchain = deserializedBC;
                     }
-
-                    if (recData.StartsWith("SAVESHARD|"))
+                    else if (recData.StartsWith("SAVESHARD|"))
                     {
                         string saveData = recData.Split('|')[1];
                         FileHelper.SaveShardLocally(saveData);
@@ -144,6 +189,26 @@ namespace Test1.Services
             }
         }
 
+        private async Task ProcessCompleteMessage(string completeData, IPEndPoint remoteEndPoint)
+        {
+            // Process the complete reassembled message
+            if (completeData.StartsWith("SAVESHARD|"))
+            {
+                string saveData = completeData.Split('|')[1];
+                FileHelper.SaveShardLocally(saveData);
+            }
+            else if (completeData.StartsWith("TAKEBC|"))
+            {
+                string newBlockchain = completeData.Split('|')[1];
+                List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
+                Blockchain.blockchain = deserializedBC;
+            }
+            // Add other message types as needed
+
+            LogMessage?.Invoke($"Processed complete message from {remoteEndPoint}");
+            DataReceived?.Invoke(remoteEndPoint, Encoding.UTF8.GetBytes(completeData));
+        }
+
         public async Task StopAsync()
         {
             _cts?.Cancel();
@@ -159,8 +224,36 @@ namespace Test1.Services
 
         public async Task SendMessageAsync(string prefix, string message, IPEndPoint endpoint = null)
         {
-            var msg = Encoding.UTF8.GetBytes($"{prefix}|{message}");
-            await _udpClient.SendAsync(msg, msg.Length, endpoint ?? _serverEndPoint);
+            const int maxChunkSize = 60000; // Safe size below typical UDP limits
+            byte[] fullMessage = Encoding.UTF8.GetBytes($"{prefix}|{message}");
+
+            if (fullMessage.Length <= maxChunkSize)
+            {
+                // Send as single packet if small enough
+                await _udpClient.SendAsync(fullMessage, fullMessage.Length, endpoint ?? _serverEndPoint);
+            }
+            else
+            {
+                // Split into chunks
+                int chunkCount = (int)Math.Ceiling((double)fullMessage.Length / maxChunkSize);
+                for (int i = 0; i < chunkCount; i++)
+                {
+                    int offset = i * maxChunkSize;
+                    int length = Math.Min(maxChunkSize, fullMessage.Length - offset);
+                    byte[] chunk = new byte[length];
+                    Array.Copy(fullMessage, offset, chunk, 0, length);
+
+                    // Add chunk header (prefix|chunkIndex|chunkCount|)
+                    string chunkHeader = $"{prefix}|CHUNKED|{i}|{chunkCount}|";
+                    byte[] headerBytes = Encoding.UTF8.GetBytes(chunkHeader);
+                    byte[] packet = new byte[headerBytes.Length + length];
+
+                    Array.Copy(headerBytes, 0, packet, 0, headerBytes.Length);
+                    Array.Copy(chunk, 0, packet, headerBytes.Length, length);
+
+                    await _udpClient.SendAsync(packet, packet.Length, endpoint ?? _serverEndPoint);
+                }
+            }
         }
 
         public void Dispose()
