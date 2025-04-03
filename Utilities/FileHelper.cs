@@ -5,6 +5,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Test1.Models;
+using Windows.Data.Text;
 
 namespace Test1.Utilities
 {
@@ -99,9 +101,32 @@ namespace Test1.Utilities
             List<byte[]> chunkHashList = await StoreChunks();
 
             //[!] TODO: write chunk hash to fhl file
-            //ProcessChunks(chunkHashList, hashFilePath);
+            ProcessChunks(chunkHashList, hashFilePath);
 
         }
+
+        private static void ProcessChunks(List<byte[]> hashes, string hashFilepath)
+        {
+
+            StringBuilder sb = new StringBuilder();
+
+            foreach (var hash in hashes)
+            {
+                string hashHex = BitConverter.ToString(hash).Replace("-", ""); // Convert to hex string
+                sb.Append(hashHex + ";");
+            }
+
+            // Remove last ';' if necessary
+            if (sb.Length > 0)
+                sb.Length--;
+
+
+            File.WriteAllText(hashFilepath, sb.ToString());
+
+            Console.WriteLine($"Chunk hashes written to: {hashFilepath}");
+        }
+
+
 
         private static async Task<List<byte[]>> StoreChunks()
         {
@@ -119,9 +144,15 @@ namespace Test1.Utilities
                 byte[] shardHash = sha256.ComputeHash(encryptedData);
                 chunksHash.Add(shardHash);
                 //string finalSendData = Convert.ToBase64String(encryptedData);
-                
+
 
                 //[!] TODO: store each chunk at random node
+                OnlineNode selectedNode = await Blockchain.SelectBestNode();
+                List<OnlineNode> tempList = new List<OnlineNode>();
+                tempList.Add(selectedNode);
+                await Blockchain.p2pService.PunchPeers(tempList);
+                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD|", Encoding.UTF8.GetString(encryptedData));
+
 
                 //OnlineNode selectedNode = await GetRandomOnlineNodeAsync();
                 //await SendEncryptedDataAsync(selectedNode, encryptedData);
@@ -145,6 +176,21 @@ namespace Test1.Utilities
             byte[] iv = Convert.FromBase64String(parts[1]);
 
             return (key, iv);
+        }
+
+        public static void SaveShardLocally(string shardString)
+        {
+            //save shard to folder
+            byte[] shardBytes = Encoding.UTF8.GetBytes(shardString);
+            SHA256 sha256 = SHA256.Create();
+            byte[] shardhash = sha256.ComputeHash(shardBytes);
+            string shardname = Encoding.UTF8.GetString(shardhash);
+            string shardPath = mainstoragePath+ shardname;
+            File.WriteAllBytes(shardPath, shardBytes);
+
+            //create transaction
+
+            //broadcast transaction
         }
     }
 }

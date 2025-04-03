@@ -20,6 +20,10 @@ namespace Test1.Models
         static List<StorageCommitmentTransaction> pendingTransactions = new List<StorageCommitmentTransaction>();
 
         public static NetworkService networkservice;
+
+        public static UDPService udpService;
+        public static P2PService p2pService;
+
         public Blockchain()
         {
         }
@@ -37,12 +41,20 @@ namespace Test1.Models
 
         }
 
+        public static async Task<OnlineNode> SelectBestNode()
+        {
+            List<OnlineNode> onlineNodes = await GetOnlineNodes();
+            var random = new Random(); 
+            int index = random.Next(onlineNodes.Count);
+            return onlineNodes[index];
+        }
+
         public static async Task InitializeBlockchainAsync()
         {
 
             //start udp listener and puncher
-            var udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
-            var p2pService = new P2PService(udpService);
+            udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
+            p2pService = new P2PService(udpService);
 
             udpService.StartHolePunchingAsync();
 

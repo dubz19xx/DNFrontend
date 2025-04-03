@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Test1.Models;
+using Test1.Utilities;
 
 namespace Test1.Services
 {
@@ -121,6 +122,12 @@ namespace Test1.Services
                         string newBlockchain = recData.Split('|')[1];
                         List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
                         Blockchain.blockchain = deserializedBC;
+                    }
+
+                    if (recData.StartsWith("SAVESHARD|"))
+                    {
+                        string saveData = recData.Split('|')[1];
+                        FileHelper.SaveShardLocally(saveData);
                     }
 
                     LogMessage?.Invoke($"Received {result.Buffer.Length} bytes from {result.RemoteEndPoint}");
