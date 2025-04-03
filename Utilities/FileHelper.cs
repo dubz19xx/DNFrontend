@@ -322,7 +322,7 @@ namespace Test1.Utilities
 
                 await Blockchain.p2pService.PunchPeers(tempList);
 
-                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD|", Encoding.UTF8.GetString(encryptedData));
+                await Blockchain.p2pService.SendUDPmsg(selectedNode.ipAddress, selectedNode.port, "SAVESHARD", Encoding.UTF8.GetString(encryptedData));
 
 
 
