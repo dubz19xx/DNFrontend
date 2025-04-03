@@ -38,7 +38,7 @@ namespace Test1
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-
+    using Test1.Utilities;
 
     public sealed partial class MainAppPage : Window
     {
@@ -96,7 +96,8 @@ namespace Test1
             Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
             if (file != null)
             {
-                FileProcessingHelper.ProcessFile(file, MainpageUsername.Text);
+
+                FileHelper.UploadFile(file);
                 var properties = await file.GetBasicPropertiesAsync();
                 double fileSize = properties.Size / 1024;  // Get file size
                 string filesizeinkb = $"{fileSize:F2} KB";
