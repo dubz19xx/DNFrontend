@@ -39,10 +39,12 @@ namespace Test1.Models
 
         public static async Task InitializeBlockchainAsync()
         {
-            
+
             //start udp listener and puncher
-            UDPService udpservice = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
-            await udpservice.StartHolePunchingAsync();
+            var udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
+            var p2pService = new P2PService(udpService);
+
+            udpService.StartHolePunchingAsync();
 
             //get online nodes
             List<OnlineNode> onlineNodesList = await GetOnlineNodes();
@@ -51,10 +53,10 @@ namespace Test1.Models
             if (onlineNodesList.Count > 0)
             {
                 //download blockchain from other online node
-                await P2PService.PunchPeers(onlineNodesList);
+                await p2pService.PunchPeers(onlineNodesList);
                 foreach(OnlineNode node in onlineNodesList)
                 {
-                    await P2PService.SendUDPmsg(node.ipAddress, node.port, "DOWNLOADBC");
+                    await p2pService.SendUDPmsg(node.ipAddress, node.port, "DOWNLOADBC");
                 }
             }
             else

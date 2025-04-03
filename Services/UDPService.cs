@@ -140,6 +140,12 @@ namespace Test1.Services
             await _udpClient.SendAsync(data, data.Length, endpoint);
         }
 
+        public async Task SendMessageAsync(string prefix, string message, IPEndPoint endpoint = null)
+        {
+            var msg = Encoding.UTF8.GetBytes($"{prefix}|{message}");
+            await _udpClient.SendAsync(msg, msg.Length, endpoint ?? _serverEndPoint);
+        }
+
         public void Dispose()
         {
             if (_isDisposed) return;
