@@ -101,7 +101,7 @@
                     <StackPanel Background="#282828">
                         <Grid Height="56">
                         </Grid>
-                        <Button x:Name="Support" >
+                        <Button x:Name="Support" Click="Support_Click">
                             <Button.Content>
                                 <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\customer-service.png" Width="28" Height="28"/>
                             </Button.Content>

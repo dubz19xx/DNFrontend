@@ -119,7 +119,7 @@ namespace Test1
             var fileName = (string)button.Tag;
 
             // Implement your download logic here
-            await FileHelper.DownloadFile(fileName);
+            //await FileHelper.DownloadFile(fileName);
         }
 
         private async void FabButton_Click(object sender, RoutedEventArgs e)
@@ -158,6 +158,11 @@ namespace Test1
             await AuthService.Logout();
             new LoginPage().Activate();
             this.Close();
+        }
+
+        private void Support_Click(object sender, RoutedEventArgs e)
+        {
+            FileHelper.DownloadFile();
         }
     }
 }

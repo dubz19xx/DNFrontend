@@ -428,10 +428,43 @@ namespace Test1.Utilities
             }
         }
 
-        public static async Task DownloadFile(string filename)
+        public static async Task<List<string>> DownloadFile()
         {
-            Console.WriteLine($"Download file: {filename}");
-            //uploadqueuePath
+            try
+            {
+                // Get all files in the upload queue directory
+                string[] filesInQueue = Directory.GetFiles(uploadqueuePath);
+
+                // Filter out non-hashlist files (assuming they start with "fhl.")
+                var hashListFiles = filesInQueue.Where(f => Path.GetFileName(f).StartsWith("fhl.")).ToList();
+
+                if (hashListFiles.Count == 0)
+                {
+                    Console.WriteLine("No downloadable files found in upload queue");
+                    return new List<string>();
+                }
+
+                // Select a random file
+                Random random = new Random();
+                string selectedFile = hashListFiles[random.Next(hashListFiles.Count)];
+
+                Console.WriteLine($"Selected file for download: {Path.GetFileName(selectedFile)}");
+
+                // Read the file content
+                string fileContent = await File.ReadAllTextAsync(selectedFile);
+
+                // Split the content by semicolons
+                List<string> chunkHashes = fileContent.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                Console.WriteLine($"Found {chunkHashes.Count} chunk hashes in the file");
+
+                return chunkHashes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in DownloadFile: {ex.Message}");
+                throw;
+            }
         }
     }
 
