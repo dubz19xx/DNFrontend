@@ -25,7 +25,7 @@ namespace Test1.Models
             Transactions = new List<StorageCommitmentTransaction>();
         }
 
-        public void CalculateMerkleRoot()
+        public string CalculateMerkleRoot()
         {
             List<string> hashes = Transactions.Select(tx => tx.CalculateHash()).ToList();
 
@@ -55,15 +55,17 @@ namespace Test1.Models
             }
 
             MerkleRoot = hashes.Count > 0 ? hashes[0] : string.Empty;
+            return MerkleRoot;
         }
 
-        public void CalculateBlockHash()
+        public string CalculateBlockHash()
         {
             string rawData = $"{Index}-{Timestamp}-{PreviousHash}-{MerkleRoot}";
             using (SHA256 sha256 = SHA256.Create())
             {
                 byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawData));
                 BlockHash = Convert.ToHexString(bytes);
+                return BlockHash;
             }
         }
     }

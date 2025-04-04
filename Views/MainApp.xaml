@@ -159,32 +159,21 @@
                                 <TextBlock x:Name="Coins" Text="50" FontSize="68" FontWeight="Bold" VerticalAlignment="Center" Margin="16,16,16,16"/>
                             </StackPanel>
                         </Grid>
+                        <!-- Files List -->
                         <StackPanel Grid.Row="1">
                             <TextBlock Text="Recent Files" Foreground="White" FontSize="16" Margin="10,20,0,10"/>
                             <ListView x:Name="FileListView" Background="#333" Height="316" CornerRadius="15" Margin="16,16,16,16">
-                                <ListView.HeaderTemplate>
-                                    <DataTemplate>
-                                        <Grid ColumnDefinitions="2*,*,*,*">
-                                            <TextBlock Text="Name" Foreground="White" Grid.Column="0" Margin="16,0,0,16"/>
-                                            <TextBlock Text="Size" Foreground="White" Grid.Column="1" Margin="0,0,0,16"/>
-                                            <TextBlock Text="Date" Foreground="White" Grid.Column="2" Margin="0,0,0,16"/>
-                                            <TextBlock Text="Download" Foreground="White" Grid.Column="3" Margin="0,0,0,16"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListView.HeaderTemplate>
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid ColumnDefinitions="2*,*,*,*">
-                                            <TextBlock Text="{Binding Name}" Foreground="White" Grid.Column="0"/>
-                                            <TextBlock Text="{Binding Size}" Foreground="White" Grid.Column="1"/>
-                                            <TextBlock Text="{Binding Date}" Foreground="White" Grid.Column="2"/>
-                                            <Button Content="Download" Grid.Column="3"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
+                                <ListView.Header>
+                                    <Grid ColumnDefinitions="2*,*,*,*">
+                                        <TextBlock Text="Name" Foreground="White" Grid.Column="0" Margin="16,0,0,16"/>
+                                        <TextBlock Text="Size" Foreground="White" Grid.Column="1" Margin="0,0,0,16"/>
+                                        <TextBlock Text="Date" Foreground="White" Grid.Column="2" Margin="0,0,0,16"/>
+                                        <TextBlock Text="Action" Foreground="White" Grid.Column="3" Margin="0,0,0,16"/>
+                                    </Grid>
+                                </ListView.Header>
                             </ListView>
                         </StackPanel>
-                        <!-- Floating Action Button -->
+                <!-- Floating Action Button -->
                 <Button x:Name="FabButton" 
                 Width="60" Height="60"
                 Background="#428DFF"

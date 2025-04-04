@@ -9,11 +9,13 @@ using Windows.Foundation;
 using Test1.Services;
 using Windows.ApplicationModel.Store.Preview.InstallControl;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Test1.Models
 {
     internal class Blockchain
     {
+        public static string NodeAddress;
         public static List<Block> blockchain = new List<Block>();
         public static Block GenesisBlock { get; private set; }
         public static Block LatestBlock { get; private set; }
@@ -28,6 +30,30 @@ namespace Test1.Models
         public Blockchain()
         {
         }
+
+        public static void AddTransaction(StorageCommitmentTransaction transaction)
+        {
+            pendingTransactions.Add(transaction);
+            if (pendingTransactions.Count > 2)
+            {
+                Block block = new Block();
+                foreach (StorageCommitmentTransaction txn in pendingTransactions)
+                {
+                    block.Transactions.Add(txn);
+                }
+                block.Timestamp = DateTime.Now;
+                block.Index = LatestBlock.Index++;
+                block.PreviousHash = LatestBlock.BlockHash;
+                block.MerkleRoot = block.CalculateMerkleRoot();
+                block.BlockHash = block.CalculateBlockHash();
+                block.PreviousBlock = LatestBlock;
+                blockchain.Add(block);
+
+                LatestBlock = block;
+
+            }
+        }
+
 
         public static async Task<List<OnlineNode>> GetOnlineNodes()
         {
@@ -76,12 +102,12 @@ namespace Test1.Models
             else
             {
                 //create new blockchain
-
+                Block GenesisBlock = CreateGenesisBlock();
+                Block LatestBlock = GenesisBlock;
+                blockchain.Add(LatestBlock);
             }
 
-            Block GenesisBlock = CreateGenesisBlock();
-            Block LatestBlock = GenesisBlock;
-            blockchain.Add(LatestBlock);
+            
 
         }
 

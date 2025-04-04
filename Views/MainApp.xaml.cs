@@ -1,132 +1,159 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using Microsoft.UI;
+using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Newtonsoft.Json;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Graphics;
+using Microsoft.UI;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 using Microsoft.UI.Windowing;
-using Test1.Models;
-using Test1.Services; 
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Windows.Graphics;
+using Test1.Services;
+using Test1.Utilities;
 
 namespace Test1
 {
-    /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
-    /// </summary>
-    /// using System;
-    using System.Net;
-    using System.Net.Sockets;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Text.Json;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Test1.Utilities;
-
     public sealed partial class MainAppPage : Window
     {
-        public string username;
-        public string address;
+        public static string username;
+        public static string address;
 
-        private ObservableCollection<FileItem> files = new ObservableCollection<FileItem>();
         public MainAppPage(string username, string address)
         {
             this.InitializeComponent();
-            
-            //FileListView.ItemsSource = files;
-            this.Closed += MainWindow_Closed;
-            
+
+            // Set window size
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
             AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
-
-            this.username = username;
-            this.address = address;
-            UpdateUI(this.username, this.address);
-
             appWindow.Resize(new SizeInt32(1200, 775));
 
+            // Initialize UI
+            MainAppPage.username = username;
+            MainAppPage.address = address;
+            UpdateUI(username, address);
 
-            Blockchain.InitializeBlockchainAsync(); 
+            // Load saved files
+            LoadFiles();
 
+            this.Closed += MainWindow_Closed;
         }
 
-        public class FileItem
-        {
-            public string Name { get; set; }
-            public string Size { get; set; }
-            public string Date { get; set; }
-        }
-
-        
         public async void UpdateUI(string username, string address)
         {
             string fmtadd = "@" + address;
             MainpageUsername.Text = username;
-            MainpageAddress_display.Text = fmtadd;  // Display the address
+            MainpageAddress_display.Text = fmtadd;
+        }
 
+        private async void LoadFiles()
+        {
+            try
+            {
+                var files = await FileStorageService.LoadFilesAsync();
+                FileListView.Items.Clear();
+
+                foreach (var file in files)
+                {
+                    var grid = new Grid();
+                    grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(2, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
+
+                    var nameText = new TextBlock
+                    {
+                        Text = file.Name,
+                        Foreground = new SolidColorBrush(Colors.White),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    Grid.SetColumn(nameText, 0);
+
+                    var sizeText = new TextBlock
+                    {
+                        Text = file.Size,
+                        Foreground = new SolidColorBrush(Colors.White),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    Grid.SetColumn(sizeText, 1);
+
+                    var dateText = new TextBlock
+                    {
+                        Text = file.Date,
+                        Foreground = new SolidColorBrush(Colors.White),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    Grid.SetColumn(dateText, 2);
+
+                    var downloadButton = new Button
+                    {
+                        Content = "Download",
+                        Tag = file.Name,
+                        Margin = new Thickness(0, 0, 0, 0),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    downloadButton.Click += DownloadButton_Click;
+                    Grid.SetColumn(downloadButton, 3);
+
+                    grid.Children.Add(nameText);
+                    grid.Children.Add(sizeText);
+                    grid.Children.Add(dateText);
+                    grid.Children.Add(downloadButton);
+
+                    FileListView.Items.Add(grid);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading files: {ex.Message}");
+            }
+        }
+
+        private async void DownloadButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = (Button)sender;
+            var fileName = (string)button.Tag;
+
+            // Implement your download logic here
+            await FileHelper.DownloadFile(fileName);
         }
 
         private async void FabButton_Click(object sender, RoutedEventArgs e)
         {
-            var picker = new Windows.Storage.Pickers.FileOpenPicker();
-            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
             picker.FileTypeFilter.Add("*");
 
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
-            Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
+            StorageFile file = await picker.PickSingleFileAsync();
             if (file != null)
             {
-
-                await FileHelper.UploadFile(file);
-                var properties = await file.GetBasicPropertiesAsync();
-                double fileSize = properties.Size / 1024;  // Get file size
-                string filesizeinkb = $"{fileSize:F2} KB";
-
-                var newItem = new FileItem { Name = file.Name, Size = filesizeinkb, Date = DateTime.Now.ToShortDateString() };
-                files.Add(newItem);
+                try
+                {
+                    await FileStorageService.SaveFileAsync(file);
+                    //await FileHelper.UploadFile(file);
+                    LoadFiles(); // Refresh the list
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error uploading file: {ex.Message}");
+                }
             }
         }
 
-        private void ProfileButton_Click(object sender, RoutedEventArgs e)
+        private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
-            
+            AuthService.Logout();
         }
-
 
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
             await AuthService.Logout();
-
-            LoginPage logW = new LoginPage();
-            logW.Activate();
-
+            new LoginPage().Activate();
             this.Close();
-
         }
-        private void MainWindow_Closed(object sender, WindowEventArgs e)
-        {
-            AuthService.Logout(); // Call your logout function
-        }
-
     }
 }

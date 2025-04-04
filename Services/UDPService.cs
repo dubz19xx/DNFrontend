@@ -122,6 +122,12 @@ namespace Test1.Services
                         List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
                         Blockchain.blockchain = deserializedBC;
                     }
+                    else if (recData.StartsWith("ADDTRANSACTION|"))
+                    {
+                        string strTransaction = recData.Split("|")[1];
+                        StorageCommitmentTransaction transaction = JsonConvert.DeserializeObject<StorageCommitmentTransaction>(strTransaction);
+                        Blockchain.AddTransaction(transaction);
+                    }
                     else if (recData.StartsWith("SAVESHARD|"))
                     {
                         // Find where the payload starts (after "SAVESHARD|")

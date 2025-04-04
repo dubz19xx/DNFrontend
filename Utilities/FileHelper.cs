@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 using System.Collections.Generic;
 
@@ -223,9 +224,6 @@ namespace Test1.Utilities
             List<byte[]> chunkHashList = await StoreChunks();
 
 
-
-            //[!] TODO: write chunk hash to fhl file
-
             ProcessChunks(chunkHashList, hashFilePath);
 
 
@@ -385,7 +383,7 @@ namespace Test1.Utilities
 
 
 
-        public static void SaveShardLocally(byte[] shardData)
+        public static async void SaveShardLocally(byte[] shardData)
         {
             try
             {
@@ -402,7 +400,25 @@ namespace Test1.Utilities
                     // Write binary data directly
                     File.WriteAllBytes(shardPath, shardData);
 
-                    Console.WriteLine($"Shard saved to: {shardPath}");
+                    //create transaction
+                    StorageCommitmentTransaction transaction = new StorageCommitmentTransaction();
+                    transaction.NodeId = MainAppPage.address;
+                    transaction.Timestamp = DateTime.Now;
+                    transaction.ChunkHash = shardName;
+                    transaction.TransactionType = "STORAGE";
+
+                    Blockchain.AddTransaction(transaction);
+
+                    //broadcast transaction
+                    string transitTransaction = JsonConvert.SerializeObject(transaction);
+
+                    List<OnlineNode> onlineNodes = await Blockchain.GetOnlineNodes();
+                    Blockchain.p2pService.PunchPeers(onlineNodes);
+
+                    foreach (OnlineNode onlineNode in onlineNodes) {
+                        await Blockchain.p2pService.SendUDPmsg(onlineNode.ipAddress, onlineNode.port, "ADDTRANSACTION|", transitTransaction);
+                    }
+
                 }
             }
             catch (Exception ex)
@@ -410,6 +426,12 @@ namespace Test1.Utilities
                 Console.WriteLine($"Error saving shard: {ex.Message}");
                 throw;
             }
+        }
+
+        public static async Task DownloadFile(string filename)
+        {
+            Console.WriteLine($"Download file: {filename}");
+            uploadqueuePath
         }
     }
 
