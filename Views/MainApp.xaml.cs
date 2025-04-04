@@ -38,7 +38,7 @@ namespace Test1
             Blockchain.InitializeBlockchainAsync();
 
             // Load saved files
-            LoadFiles();
+            //LoadFiles();
 
             this.Closed += MainWindow_Closed;
         }
@@ -132,19 +132,20 @@ namespace Test1
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
             StorageFile file = await picker.PickSingleFileAsync();
-            if (file != null)
-            {
+            await FileHelper.UploadFile(file);
+            /*if (file != null)
+            {B
                 try
                 {
-                    await FileStorageService.SaveFileAsync(file);
+                    //FileStorageService.SaveFileAsync(file);
                     //await FileHelper.UploadFile(file);
-                    LoadFiles(); // Refresh the list
+                    //LoadFiles(); // Refresh the list
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error uploading file: {ex.Message}");
                 }
-            }
+            }*/
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs e)
