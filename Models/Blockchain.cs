@@ -31,6 +31,41 @@ namespace Test1.Models
         {
         }
 
+        public static Dictionary<string, List<string>> GetNodesForChunks(List<string> chunkHashes)
+        {
+            Dictionary<string, List<string>> chunkToNodesMap = new Dictionary<string, List<string>>();
+
+            // Initialize the dictionary with all requested chunk hashes
+            foreach (var hash in chunkHashes)
+            {
+                chunkToNodesMap[hash] = new List<string>();
+            }
+
+
+            // Traverse each block in the blockchain
+            foreach (var block in blockchain)
+            {
+                // Check each transaction in the block
+                foreach (var transaction in block.Transactions)
+                {
+                    // Only process STORAGE transactions
+                    if (transaction.TransactionType == "STORAGE")
+                    {
+                        // Check if this transaction's chunk hash is one we're looking for
+                        if (chunkToNodesMap.ContainsKey(transaction.ChunkHash))
+                        {
+                            // Add the node ID if not already present
+                            if (!chunkToNodesMap[transaction.ChunkHash].Contains(transaction.NodeId))
+                            {
+                                chunkToNodesMap[transaction.ChunkHash].Add(transaction.NodeId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return chunkToNodesMap;
+        }
         public static void AddTransaction(StorageCommitmentTransaction transaction)
         {
             pendingTransactions.Add(transaction);

@@ -455,6 +455,7 @@ namespace Test1.Utilities
 
                 // Split the content by semicolons
                 List<string> chunkHashes = fileContent.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                Dictionary<string, List<string>> chunkLocations = Blockchain.GetNodesForChunks(chunkHashes);
 
                 Console.WriteLine($"Found {chunkHashes.Count} chunk hashes in the file");
 
