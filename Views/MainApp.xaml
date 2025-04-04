@@ -26,7 +26,7 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Button Margin="16,0,0,0" CornerRadius="15" Height="44" >
                     <Button.Content>
-                        <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\coin.png" Height="28" Width="28"/>
+                        <Image Source="\Assets\coin.png" Height="28" Width="28"/>
                     </Button.Content>
                     <Button.Flyout>
                         <Flyout Placement="Bottom">
@@ -42,7 +42,7 @@
                                     <ToggleButton Height="80" Width="100">
                                         <ToggleButton.Content>
                                             <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                                <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\block.png" Height="32" Width="32"/>
+                                                <Image Source="\Assets\block.png" Height="32" Width="32"/>
                                                 <TextBlock Text="Start Mining" HorizontalAlignment="Center" FontSize="12"/>
                                                 <TextBlock Text="Blocks" HorizontalAlignment="Center" FontSize="12"/>
                                             </StackPanel>
@@ -53,7 +53,7 @@
                                     <Button Height="80" Width="100"  Margin="16,0,0,0" IsEnabled="False">
                                         <Button.Content>
                                             <StackPanel>
-                                                <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\payment-method.png" Height="32" Width="32"/>
+                                                <Image Source="\Assets\payment-method.png" Height="32" Width="32"/>
                                                 <TextBlock Text="Purchase Coins" HorizontalAlignment="Center" FontSize="11.5"/>
                                             </StackPanel>
                                         </Button.Content>
@@ -68,13 +68,13 @@
 
                 <Button Height="44" Margin="16,0,16,0" >
                     <Button.Content>
-                        <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\bussiness-man.png" Width="28" Height="28"/>
+                        <Image Source="\Assets\bussiness-man.png" Width="28" Height="28"/>
                     </Button.Content>
                     <Button.Flyout>
                         <Flyout Placement="Bottom">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                    <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\bussiness-man.png" Height="32" Width="32" Margin="0,0,16,0"/>
+                                    <Image Source="\Assets\bussiness-man.png" Height="32" Width="32" Margin="0,0,16,0"/>
                                     <StackPanel>
                                         <TextBlock Name ="MainpageUsername" Text="none" FontSize="16"/>
                                         <TextBlock Name ="MainpageAddress_display" Text="none" FontSize="12" Foreground="Gray"/>
@@ -103,7 +103,7 @@
                         </Grid>
                         <Button x:Name="Support" Click="Support_Click">
                             <Button.Content>
-                                <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\customer-service.png" Width="28" Height="28"/>
+                                <Image Source="\Assets\customer-service.png" Width="28" Height="28"/>
                             </Button.Content>
                             <Button.Flyout>
                                 <Flyout Placement="Right">
@@ -137,7 +137,7 @@
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
                                 <StackPanel VerticalAlignment="Center" Margin="16,16,16,16">
-                                    <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\chain.png" Height="32" Width="32" Margin="0,0,0,8"/>
+                                    <Image Source="\Assets\chain.png" Height="32" Width="32" Margin="0,0,0,8"/>
                                     <TextBlock Text="Blocks Mined"/>
                                 </StackPanel>
                                 <TextBlock x:Name="Blocks" Text="10" FontSize="68" FontWeight="Bold" VerticalAlignment="Center" Margin="16,16,16,16"/>
@@ -145,7 +145,7 @@
 
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                                 <StackPanel VerticalAlignment="Center" Margin="16,16,16,16">
-                                    <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\submit.png" Height="32" Width="32" Margin="0,0,0,8"/>
+                                    <Image Source="\Assets\submit.png" Height="32" Width="32" Margin="0,0,0,8"/>
                                     <TextBlock Text="Files Uploaded"/>
                                 </StackPanel>
                                 <TextBlock x:Name="Uploads" Text="15" FontSize="68" FontWeight="Bold" VerticalAlignment="Center" Margin="16,16,16,16"/>
@@ -153,7 +153,7 @@
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
                                 <StackPanel VerticalAlignment="Center" Margin="16,16,16,16">
-                                    <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\coin.png" Height="32" Width="32" Margin="0,0,0,8"/>
+                                    <Image Source="\Assets\coin.png" Height="32" Width="32" Margin="0,0,0,8"/>
                                     <TextBlock Text="Coins Earned"/>
                                 </StackPanel>
                                 <TextBlock x:Name="Coins" Text="50" FontSize="68" FontWeight="Bold" VerticalAlignment="Center" Margin="16,16,16,16"/>
@@ -186,7 +186,7 @@
                 Click ="FabButton_Click"
                 Grid.Row="1">
                             <Button.Content>
-                                <Image Source="C:\Users\kshit\Downloads\BCBDSN-master\\Assets\folder.png" Height="36" Width="36"/>
+                                <Image Source="\Assets\folder.png" Height="36" Width="36"/>
                             </Button.Content>
                             <Button.Shadow>
                                 <ThemeShadow/>
