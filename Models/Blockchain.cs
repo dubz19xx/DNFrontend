@@ -42,7 +42,7 @@ namespace Test1.Models
                     block.Transactions.Add(txn);
                 }
                 block.Timestamp = DateTime.Now;
-                block.Index = LatestBlock.Index++;
+                block.Index = blockchain.Count();
                 block.PreviousHash = LatestBlock.BlockHash;
                 block.MerkleRoot = block.CalculateMerkleRoot();
                 block.BlockHash = block.CalculateBlockHash();
