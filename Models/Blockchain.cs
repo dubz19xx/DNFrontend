@@ -42,11 +42,22 @@ namespace Test1.Models
                     block.Transactions.Add(txn);
                 }
                 block.Timestamp = DateTime.Now;
-                block.Index = LatestBlock.Index++;
-                block.PreviousHash = LatestBlock.BlockHash;
+                if (LatestBlock == null)
+                {
+                    // This should be the first block after genesis
+                    block.Index = 1;
+                    block.PreviousHash = GenesisBlock.BlockHash;
+                    block.PreviousBlock = GenesisBlock;
+                }
+                else
+                {
+                    block.Index = LatestBlock.Index + 1;  // Changed from Index++ to Index + 1
+                    block.PreviousHash = LatestBlock.BlockHash;
+                    block.PreviousBlock = LatestBlock;
+                }
+
                 block.MerkleRoot = block.CalculateMerkleRoot();
                 block.BlockHash = block.CalculateBlockHash();
-                block.PreviousBlock = LatestBlock;
                 blockchain.Add(block);
 
                 LatestBlock = block;
@@ -102,8 +113,8 @@ namespace Test1.Models
             else
             {
                 //create new blockchain
-                Block GenesisBlock = CreateGenesisBlock();
-                Block LatestBlock = GenesisBlock;
+                GenesisBlock = CreateGenesisBlock();
+                LatestBlock = GenesisBlock;
                 blockchain.Add(LatestBlock);
             }
 
