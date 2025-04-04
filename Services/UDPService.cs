@@ -122,7 +122,7 @@ namespace Test1.Services
                     }
                     else if (recData.StartsWith("ADDTRANSACTION|"))
                     {
-                        string strTransaction = recData.Split("|")[1];
+                        string strTransaction = recData.Split("|")[2];
                         StorageCommitmentTransaction transaction = JsonConvert.DeserializeObject<StorageCommitmentTransaction>(strTransaction);
                         Blockchain.AddTransaction(transaction);
                     }
