@@ -38,7 +38,7 @@ namespace Test1
             Blockchain.InitializeBlockchainAsync();
 
             // Load saved files
-            //LoadFiles();
+            LoadFiles();
 
             this.Closed += MainWindow_Closed;
         }
@@ -133,6 +133,8 @@ namespace Test1
 
             StorageFile file = await picker.PickSingleFileAsync();
             await FileHelper.UploadFile(file);
+            FileStorageService.SaveFileAsync(file);
+            LoadFiles();
             /*if (file != null)
             {B
                 try
