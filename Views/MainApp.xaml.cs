@@ -119,7 +119,7 @@ namespace Test1
             var fileName = (string)button.Tag;
 
             // Implement your download logic here
-            //await FileHelper.DownloadFile(fileName);
+            await FileHelper.DownloadFile();
         }
 
         private async void FabButton_Click(object sender, RoutedEventArgs e)
