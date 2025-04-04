@@ -42,7 +42,7 @@ namespace Test1.Models
                     block.Transactions.Add(txn);
                 }
                 block.Timestamp = DateTime.Now;
-                block.Index = blockchain.Count();
+                block.Index = LatestBlock.Index++;
                 block.PreviousHash = LatestBlock.BlockHash;
                 block.MerkleRoot = block.CalculateMerkleRoot();
                 block.BlockHash = block.CalculateBlockHash();
@@ -109,6 +109,14 @@ namespace Test1.Models
 
             
 
+        }
+
+        public static void UpdateBlockchain(List<Block> newBC)
+        {
+            blockchain = new List<Block>(newBC);
+
+            // Update the latest block reference
+            LatestBlock = blockchain.Last();
         }
 
         public static Block CreateGenesisBlock()

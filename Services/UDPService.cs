@@ -117,7 +117,8 @@ namespace Test1.Services
                     {
                         string newBlockchain = recData.Split('|')[1];
                         List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
-                        Blockchain.blockchain = deserializedBC;
+                        Blockchain.UpdateBlockchain(deserializedBC);
+                        //Blockchain.blockchain = deserializedBC
                     }
                     else if (recData.StartsWith("ADDTRANSACTION|"))
                     {
