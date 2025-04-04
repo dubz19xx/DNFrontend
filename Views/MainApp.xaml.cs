@@ -11,6 +11,7 @@ using Microsoft.UI.Windowing;
 using Windows.Graphics;
 using Test1.Services;
 using Test1.Utilities;
+using Test1.Models;
 
 namespace Test1
 {
@@ -33,6 +34,8 @@ namespace Test1
             MainAppPage.username = username;
             MainAppPage.address = address;
             UpdateUI(username, address);
+
+            Blockchain.InitializeBlockchainAsync();
 
             // Load saved files
             LoadFiles();

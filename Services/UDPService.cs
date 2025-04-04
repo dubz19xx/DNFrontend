@@ -36,9 +36,6 @@ namespace Test1.Services
             _clientId = clientId;
             _intervalSeconds = intervalSeconds;
 
-            // Setup cleanup timer for incomplete messages
-            _cleanupTimer = new Timer(CleanupIncompleteMessages, null,
-                TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
 
         public IPEndPoint LocalEndPoint => (IPEndPoint)_udpClient.Client.LocalEndPoint;
