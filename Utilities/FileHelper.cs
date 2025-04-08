@@ -428,7 +428,7 @@ namespace Test1.Utilities
             }
         }
 
-        public static async Task<List<string>> DownloadFile()
+        public static async Task<Dictionary<string, string>> DownloadFile()
         {
             try
             {
@@ -441,7 +441,7 @@ namespace Test1.Utilities
                 if (hashListFiles.Count == 0)
                 {
                     Console.WriteLine("No downloadable files found in upload queue");
-                    return new List<string>();
+                    return new Dictionary<string, string>();
                 }
 
                 // Select a random file
@@ -455,11 +455,39 @@ namespace Test1.Utilities
 
                 // Split the content by semicolons
                 List<string> chunkHashes = fileContent.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                Dictionary<string, List<string>> chunkLocations = Blockchain.GetNodesForChunks(chunkHashes);
 
-                Console.WriteLine($"Found {chunkHashes.Count} chunk hashes in the file");
+                // Dictionary to map chunkHash to node addresses
+                Dictionary<string, string> chunkLocationMapping = new Dictionary<string, string>();
 
-                return chunkHashes;
+                // Get the blockchain
+                List<Block> blockchain = Blockchain.GetBlockchain();
+
+                // Search each block's transactions for the chunk hashes
+                foreach (string chunkHash in chunkHashes)
+                {
+                    bool found = false;
+
+                    foreach (Block block in blockchain)
+                    {
+                        foreach (StorageCommitmentTransaction transaction in block.Transactions)
+                        {
+                            if (transaction.ChunkHash.Equals(chunkHash, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Found the chunk, map the chunkHash to the node address
+                                chunkLocationMapping[chunkHash] = transaction.NodeId;
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found) break;
+                    }
+
+                    
+                }
+
+
+
             }
             catch (Exception ex)
             {
@@ -467,6 +495,7 @@ namespace Test1.Utilities
                 throw;
             }
         }
+
     }
 
 }
