@@ -126,6 +126,21 @@ namespace Test1.Services
                         StorageCommitmentTransaction transaction = JsonConvert.DeserializeObject<StorageCommitmentTransaction>(strTransaction);
                         Blockchain.AddTransaction(transaction);
                     }
+                    else if (recData.StartsWith("DOWNLOADSHARD|"))
+                    {
+                        //send the shard
+                        string shardHash = recData.Split("|")[2];
+                        byte[] shardData = FileHelper.RetrieveShards(shardHash);
+                        byte[] shardRetrievalMsg = Encoding.UTF8.GetBytes("TAKESHARD|");
+                        shardRetrievalMsg.Concat(shardData);
+                        await SendAsync(shardRetrievalMsg, result.RemoteEndPoint);
+                    }
+                    else if (recData.StartsWith("TAKESHARD|"))
+                    {
+                        //store the retrieved shard
+                        string shardData = recData.Split("|")[1];
+                        FileHelper.StoreShard(Encoding.UTF8.GetBytes(shardData));
+                    }
                     else if (recData.StartsWith("SAVESHARD|"))
                     {
                         // Find where the payload starts (after "SAVESHARD|")

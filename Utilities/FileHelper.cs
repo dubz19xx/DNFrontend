@@ -17,6 +17,9 @@ using Test1.Models;
 
 using Windows.Data.Text;
 
+using Test1.Services;
+using System.Net.Http;
+
 
 
 namespace Test1.Utilities
@@ -39,7 +42,7 @@ namespace Test1.Utilities
 
         public static string configPath;
 
-
+        public static string downloadPath;
 
         public FileHelper(string username)
 
@@ -57,6 +60,7 @@ namespace Test1.Utilities
 
             configPath = Path.Combine(userFolderPath, "config");
 
+            downloadPath = Path.Combine(userFolderPath, "downloads");
         }
 
 
@@ -84,6 +88,9 @@ namespace Test1.Utilities
             if (!Directory.Exists(configPath))
 
                 Directory.CreateDirectory(configPath);
+
+            if(!Directory.Exists(downloadPath))
+                Directory.CreateDirectory(downloadPath);
 
         }
 
@@ -428,7 +435,7 @@ namespace Test1.Utilities
             }
         }
 
-        public static async Task<Dictionary<string, string>> DownloadFile()
+        public static async Task DownloadFile()
         {
             try
             {
@@ -441,7 +448,7 @@ namespace Test1.Utilities
                 if (hashListFiles.Count == 0)
                 {
                     Console.WriteLine("No downloadable files found in upload queue");
-                    return new Dictionary<string, string>();
+                    
                 }
 
                 // Select a random file
@@ -483,16 +490,70 @@ namespace Test1.Utilities
                         if (found) break;
                     }
 
-                    
+
                 }
 
-                return chunkLocationMapping;
+                Dictionary<string, OnlineNode> onlineNodeMapping = new Dictionary<string, OnlineNode>();
+
+                // Fetch the OnlineNode details for each dnAddress (from chunkLocationMapping)
+                foreach (var chunkEntry in chunkLocationMapping)
+                {
+                    string dnAddress = chunkEntry.Value;
+
+
+                    // Send a GET request to fetch the OnlineNode details for this address
+                    HttpResponseMessage response = await NetworkService.SendGetRequest($"OnlineNodes/{dnAddress}");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Deserialize the response into an OnlineNode
+                        string responseContent = await response.Content.ReadAsStringAsync();
+                        OnlineNode onlineNode = JsonConvert.DeserializeObject<OnlineNode>(responseContent);
+
+                        // Add the OnlineNode to the dictionary
+                        onlineNodeMapping[dnAddress] = onlineNode;
+                    }
+
+                }
+
+                foreach (var chunkEntry in chunkLocationMapping)
+                {
+                    string chunkHash = chunkEntry.Key;
+                    string dnAddress = chunkEntry.Value;
+
+                    // Check if the onlineNodeMapping contains the dnAddress
+                    if (onlineNodeMapping.ContainsKey(dnAddress))
+                    {
+                        OnlineNode onlineNode = onlineNodeMapping[dnAddress];
+
+                        // Send the UDP message with the shardHash (which is the chunkHash)
+                        Console.WriteLine($"Sending UDP message to {onlineNode.dnAddress} at {onlineNode.ipAddress}:{onlineNode.port} with shardHash: {chunkHash}");
+                        await Blockchain.p2pService.SendUDPmsg(onlineNode.ipAddress, onlineNode.port, "DOWNLOADSHARD|", chunkHash);
+                    }
+                }
+
             }
+
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in DownloadFile: {ex.Message}");
                 throw;
             }
+        }
+
+        public static byte[] RetrieveShards(string hash)
+        {
+            string shardPath = Path.Combine(mainstoragePath, hash);
+            shardPath = shardPath + ".shard";
+            return File.ReadAllBytes(shardPath);
+
+        }
+
+        public static void StoreShard(byte[] shardData)
+        {
+            byte[] tempShardName = SHA256.Create().ComputeHash(shardData);
+            string destination = Path.Combine(downloadPath, Encoding.UTF8.GetString(tempShardName));
+            File.WriteAllBytes(destination, shardData);
         }
 
     }
