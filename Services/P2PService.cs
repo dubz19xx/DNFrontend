@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System;
 using Test1.Models;
 using Test1.Services;
+using System.Linq;
 
 public class P2PService
 {
@@ -28,30 +29,37 @@ public class P2PService
             return;
         }
 
-        // Chunking logic
         string messageId = Guid.NewGuid().ToString("N");
         int totalChunks = (int)Math.Ceiling(data.Length / (double)MaxChunkSize);
+        var acksReceived = new bool[totalChunks];
+        var pendingChunks = new List<int>(Enumerable.Range(0, totalChunks));
 
-        for (int i = 0; i < totalChunks; i++)
+        _udpService.RegisterAckListener(messageId, (index) =>
         {
-            int offset = i * MaxChunkSize;
-            int chunkSize = Math.Min(MaxChunkSize, data.Length - offset);
+            acksReceived[index] = true;
+        });
 
-            // Build chunk header
-            string header = $"CHUNKED|{messageId}|{i}|{totalChunks}|SAVESHARD|";
-            byte[] headerBytes = Encoding.UTF8.GetBytes(header);
+        for (int attempt = 0; attempt < 5 && pendingChunks.Count > 0; attempt++)
+        {
+            foreach (int i in pendingChunks.ToList())
+            {
+                int offset = i * MaxChunkSize;
+                int chunkSize = Math.Min(MaxChunkSize, data.Length - offset);
 
-            // Create packet
-            byte[] packet = new byte[headerBytes.Length + chunkSize];
-            Buffer.BlockCopy(headerBytes, 0, packet, 0, headerBytes.Length);
-            Buffer.BlockCopy(data, offset, packet, headerBytes.Length, chunkSize);
+                string header = $"CHUNKED|{messageId}|{i}|{totalChunks}|SAVESHARD|";
+                byte[] headerBytes = Encoding.UTF8.GetBytes(header);
+                byte[] packet = new byte[headerBytes.Length + chunkSize];
+                Buffer.BlockCopy(headerBytes, 0, packet, 0, headerBytes.Length);
+                Buffer.BlockCopy(data, offset, packet, headerBytes.Length, chunkSize);
 
-            await _udpService.SendAsync(packet, endpoint);
+                await _udpService.SendAsync(packet, endpoint);
+            }
 
-            // Small delay to prevent flooding
-            if (i % 10 == 0) await Task.Delay(1);
+            await Task.Delay(300);
+            pendingChunks = pendingChunks.Where(i => !acksReceived[i]).ToList();
         }
     }
+
 
     // Keep existing methods for string messages
     public async Task SendUDPmsg(string ip, int port, string prefix, string msg = "None")

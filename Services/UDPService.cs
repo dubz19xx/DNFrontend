@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -75,6 +76,13 @@ namespace Test1.Services
             }
         }
 
+        private readonly ConcurrentDictionary<string, Action<int>> _ackListeners = new();
+
+        public void RegisterAckListener(string messageId, Action<int> ackHandler)
+        {
+            _ackListeners[messageId] = ackHandler;
+        }
+
         private async Task ReceiveLoopAsync()
         {
             try
@@ -83,29 +91,37 @@ namespace Test1.Services
                 {
                     var result = await _udpClient.ReceiveAsync(_cts.Token);
 
-                    // Handle chunked messages first
-                    if (TryProcessChunk(result.Buffer, result.RemoteEndPoint))
+                    string dataStr = Encoding.UTF8.GetString(result.Buffer);
+
+                    // Handle ACK
+                    if (dataStr.StartsWith("ACK|"))
                     {
+                        string[] parts = dataStr.Split('|');
+                        if (parts.Length >= 3 && _ackListeners.TryGetValue(parts[1], out var handler))
+                        {
+                            if (int.TryParse(parts[2], out int index))
+                                handler?.Invoke(index);
+                        }
                         continue;
                     }
 
-                    // Existing message handling
-                    string recData = Encoding.UTF8.GetString(result.Buffer);
+                    // Existing chunk handler
+                    if (TryProcessChunk(result.Buffer, result.RemoteEndPoint))
+                        continue;
+
+                    // All your original handlers like PUNCHPEER, DOWNLOADBC, etc., remain untouched below:
+                    string recData = dataStr;
                     if (recData.StartsWith("PUNCHPEER|"))
                     {
                         string peerIP = recData.Split('|')[1];
                         string peerPort = recData.Split('|')[2];
                         IPEndPoint nodeEndpoint = new IPEndPoint(IPAddress.Parse(peerIP), int.Parse(peerPort));
                         byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
-                        for (int i = 0; i < 3; i++)
-                        {
-                            await SendAsync(msg, nodeEndpoint);
-                        }
+                        for (int i = 0; i < 3; i++) await SendAsync(msg, nodeEndpoint);
                     }
                     else if (recData.StartsWith("PUNCH"))
                     {
-                        byte[] msg = Encoding.UTF8.GetBytes("PUNCH");
-                        //await SendAsync(msg, result.RemoteEndPoint);
+                        await SendAsync(Encoding.UTF8.GetBytes("PUNCH"), result.RemoteEndPoint);
                     }
                     else if (recData.StartsWith("DOWNLOADBC"))
                     {
@@ -118,7 +134,6 @@ namespace Test1.Services
                         string newBlockchain = recData.Split('|')[1];
                         List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
                         Blockchain.UpdateBlockchain(deserializedBC);
-                        //Blockchain.blockchain = deserializedBC
                     }
                     else if (recData.StartsWith("ADDTRANSACTION|"))
                     {
@@ -128,37 +143,26 @@ namespace Test1.Services
                     }
                     else if (recData.StartsWith("DOWNLOADSHARD|"))
                     {
-                        //send the shard
                         string shardHash = recData.Split("|")[2];
                         byte[] shardData = FileHelper.RetrieveShards(shardHash);
-                        byte[] shardRetrievalMsg = Encoding.UTF8.GetBytes("TAKESHARD|");
-                        shardRetrievalMsg.Concat(shardData);
+                        byte[] shardRetrievalMsg = Encoding.UTF8.GetBytes("TAKESHARD|").Concat(shardData).ToArray();
                         await SendAsync(shardRetrievalMsg, result.RemoteEndPoint);
                     }
                     else if (recData.StartsWith("TAKESHARD|"))
                     {
-                        //store the retrieved shard
                         string shardData = recData.Split("|")[1];
                         FileHelper.StoreShard(Encoding.UTF8.GetBytes(shardData));
                     }
                     else if (recData.StartsWith("SAVESHARD|"))
                     {
-                        // Find where the payload starts (after "SAVESHARD|")
                         int headerLength = Encoding.UTF8.GetBytes("SAVESHARD|").Length;
+                        if (result.Buffer.Length <= headerLength) continue;
 
-                        if (result.Buffer.Length <= headerLength)
-                        {
-                            LogMessage?.Invoke("Invalid SAVESHARD message - no payload");
-                            continue;
-                        }
-
-                        // Extract the binary payload
                         byte[] shardData = new byte[result.Buffer.Length - headerLength];
                         Buffer.BlockCopy(result.Buffer, headerLength, shardData, 0, shardData.Length);
-
-                        // Save the binary data directly
                         FileHelper.SaveShardLocally(shardData);
                     }
+
                     LogMessage?.Invoke($"Received {result.Buffer.Length} bytes from {result.RemoteEndPoint}");
                     DataReceived?.Invoke(result.RemoteEndPoint, result.Buffer);
                 }
@@ -210,6 +214,11 @@ namespace Test1.Services
                     _incompleteMessages.Remove(messageId);
                     ProcessCompleteMessage(fullData, sender, originalPrefix);
                 }
+
+
+                // In TryProcessChunk after receiving a chunk:
+                byte[] ack = Encoding.UTF8.GetBytes($"ACK|{messageId}|{chunkIndex}");
+                _ = SendAsync(ack, sender);
 
                 return true;
             }

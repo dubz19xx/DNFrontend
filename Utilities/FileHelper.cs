@@ -325,13 +325,15 @@ namespace Test1.Utilities
 
                 tempList.Add(selectedNode);
 
-                await Blockchain.p2pService.PunchPeers(tempList);
+
 
                 // Create the binary message with prefix
                 byte[] prefixBytes = Encoding.UTF8.GetBytes("SAVESHARD|");
                 byte[] message = new byte[prefixBytes.Length + encryptedData.Length];
                 Buffer.BlockCopy(prefixBytes, 0, message, 0, prefixBytes.Length);
                 Buffer.BlockCopy(encryptedData, 0, message, prefixBytes.Length, encryptedData.Length);
+
+                await Blockchain.p2pService.PunchPeers(tempList);
 
                 // Send via P2PService
                 await Blockchain.p2pService.SendUDPmsg(
