@@ -404,7 +404,7 @@ namespace Test1.Utilities
                     string shardPath = Path.Combine(mainstoragePath, shardName + ".shard");
 
                     // Ensure directory exists
-                    Directory.CreateDirectory(mainstoragePath);
+                    //Directory.CreateDirectory(mainstoragePath);
 
                     // Write binary data directly
                     File.WriteAllBytes(shardPath, shardData);
