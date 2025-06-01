@@ -83,13 +83,6 @@ namespace Test1.Models
             // Create new block if we have enough transactions
             if (_pendingTransactions.Count >= 3)
             {
-                var transactionsToAdd = new List<StorageCommitmentTransaction>();
-
-                lock (_lock)
-                {
-                    transactionsToAdd.AddRange(_pendingTransactions);
-                    _pendingTransactions.Clear();
-                }
 
                 var newBlock = new Block
                 {
