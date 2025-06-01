@@ -72,16 +72,24 @@ namespace Test1.Models
 
         public static async Task AddTransaction(StorageCommitmentTransaction transaction)
         {
+            // Create a DEEP COPY of the transaction to prevent reference issues
+            var transactionCopy = new StorageCommitmentTransaction
+            {
+                TransactionType = transaction.TransactionType,
+                ChunkHash = transaction.ChunkHash,
+                NodeId = transaction.NodeId,
+                Timestamp = transaction.Timestamp
+            };
+
             List<StorageCommitmentTransaction> transactionsToAdd = null;
 
             lock (_lock)
             {
-                _pendingTransactions.Add(transaction);
+                // Add the COPY, not the original
+                _pendingTransactions.Add(transactionCopy);
 
-                // Only proceed if we have enough transactions
                 if (_pendingTransactions.Count >= 3)
                 {
-                    // Create a NEW list with the current transactions
                     transactionsToAdd = new List<StorageCommitmentTransaction>(_pendingTransactions);
                     _pendingTransactions.Clear();
                 }
@@ -97,10 +105,20 @@ namespace Test1.Models
                     Index = latestBlock.Index + 1,
                     Timestamp = DateTime.UtcNow,
                     PreviousHash = latestBlock.BlockHash,
-                    // Use the copied list, not the original reference
                     Transactions = transactionsToAdd,
                     BlockHash = string.Empty
                 };
+
+                // Verify transactions are unique in this block
+                var uniqueHashes = new HashSet<string>();
+                foreach (var t in newBlock.Transactions)
+                {
+                    if (!uniqueHashes.Add(t.ChunkHash))
+                    {
+                        Console.WriteLine($"Duplicate transaction detected: {t.ChunkHash}");
+                        // Handle duplicate (either skip or throw)
+                    }
+                }
 
                 newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
                 newBlock.BlockHash = CalculateBlockHash(newBlock);
@@ -108,11 +126,9 @@ namespace Test1.Models
                 blockchain.Add(newBlock);
                 await SaveBlockchain(blockchain);
 
-                // Fire-and-forget the broadcast (don't await)
                 _ = Task.Run(() => BroadcastNewBlock(newBlock));
             }
         }
-
         private static async Task BroadcastNewBlock(Block newBlock)
         {
             var onlineNodes = await GetOnlineNodes();
