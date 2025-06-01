@@ -26,7 +26,7 @@ namespace Test1.Models
             // Initialize network services
             udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
-            await udpService.StartHolePunchingAsync();
+            udpService.StartHolePunchingAsync();
 
             // Create blockchain file if it doesn't exist
             if (!File.Exists(_blockchainPath))
