@@ -77,24 +77,60 @@ namespace Test1.Models
 
         private static void CreateNewBlock(List<StorageCommitmentTransaction> transactions)
         {
-            var newBlock = new Block
+            try
             {
-                Index = LatestBlock.Index + 1,
-                Timestamp = DateTime.Now,
-                PreviousHash = LatestBlock.BlockHash,
-                PreviousBlock = LatestBlock,
-                Transactions = new List<StorageCommitmentTransaction>(transactions)
-            };
+                // Validate inputs
+                if (LatestBlock == null)
+                    throw new InvalidOperationException("LatestBlock is null - blockchain not properly initialized");
 
-            newBlock.MerkleRoot = newBlock.CalculateMerkleRoot();
-            newBlock.BlockHash = newBlock.CalculateBlockHash();
+                if (transactions == null || transactions.Count == 0)
+                    throw new ArgumentException("Transactions list cannot be null or empty", nameof(transactions));
 
-            _blockchain.Add(newBlock);
-            LatestBlock = newBlock;
+                // Create defensive copy of transactions
+                var transactionCopy = new List<StorageCommitmentTransaction>(transactions);
 
-            SaveBlockchainToFile().GetAwaiter().GetResult();
+                // Create new block with validation
+                var newBlock = new Block
+                {
+                    Index = LatestBlock.Index + 1,
+                    Timestamp = DateTime.UtcNow, // Using UTC for consistency
+                    PreviousHash = LatestBlock.BlockHash ?? throw new InvalidOperationException("Previous block hash is null"),
+                    PreviousBlock = LatestBlock,
+                    Transactions = transactionCopy
+                };
+
+                // Calculate hashes
+                newBlock.MerkleRoot = newBlock.CalculateMerkleRoot();
+                newBlock.BlockHash = newBlock.CalculateBlockHash();
+
+                // Validate before adding to chain
+                if (string.IsNullOrEmpty(newBlock.BlockHash))
+                    throw new InvalidOperationException("Block hash calculation failed");
+
+                if (newBlock.Index <= LatestBlock.Index)
+                    throw new InvalidOperationException("Block index must be greater than previous block");
+
+                // Add to blockchain
+                _blockchain.Add(newBlock);
+                LatestBlock = newBlock;
+
+                // Persist changes
+                SaveBlockchainToFile().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // Log detailed error
+                Console.WriteLine($"Block creation failed: {ex}");
+
+                // Re-add transactions to pending if failed
+                if (transactions != null && transactions.Count > 0)
+                {
+                    _pendingTransactions.InsertRange(0, transactions);
+                }
+
+                throw; // Re-throw for caller to handle
+            }
         }
-
         public static void UpdateBlockchain(List<Block> newBlockchain)
         {
             // Validate the new blockchain isn't empty
