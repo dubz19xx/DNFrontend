@@ -17,30 +17,39 @@ namespace Test1.Models
     {
         private static readonly string _blockchainPath = Path.Combine(FileHelper.userFolderPath, "blockchain.json");
         public static UDPService udpService;
-        public static P2PService p2pService;
-        public static List<StorageCommitmentTransaction> pendingTransactions;
+        public static P2PService p2pService; 
+        private static readonly List<StorageCommitmentTransaction> _pendingTransactions = new List<StorageCommitmentTransaction>();
+        private static readonly object _lock = new object();
 
 
         public static async Task InitializeBlockchainAsync()
         {
-            pendingTransactions = new List<StorageCommitmentTransaction> { };
-            // Ensure directory exists
             Directory.CreateDirectory(FileHelper.userFolderPath);
 
             // Initialize network services
-            udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
+            udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
-            udpService.StartHolePunchingAsync();
+            await udpService.StartHolePunchingAsync();
 
             // Create blockchain file if it doesn't exist
             if (!File.Exists(_blockchainPath))
             {
                 await CreateNewBlockchain();
             }
+            else
+            {
+                // Validate existing blockchain
+                var blockchain = await LoadBlockchain();
+                if (!ValidateBlockchain(blockchain))
+                {
+                    Console.WriteLine("Invalid blockchain detected, creating new one");
+                    await CreateNewBlockchain();
+                }
+            }
 
-            // Sync with network
             await SyncWithNetwork();
         }
+
 
         private static async Task CreateNewBlockchain()
         {
@@ -53,43 +62,65 @@ namespace Test1.Models
                 BlockHash = CalculateHash(0, DateTime.UtcNow, "0", string.Empty)
             };
 
-            var blockchain = new List<Block> { genesisBlock };
-            await SaveBlockchain(blockchain);
+            await SaveBlockchain(new List<Block> { genesisBlock });
         }
 
         public static async Task<List<Block>> GetBlockchain()
         {
-            return await LoadBlockchain() ?? new List<Block>();
+            return await LoadBlockchain();
         }
 
         public static async Task AddTransaction(StorageCommitmentTransaction transaction)
         {
-
-
-            // Get existing pending transactions if any
-            if (pendingTransactions.Count < 3)
+            lock (_lock)
             {
-                pendingTransactions.Append(transaction);
+                _pendingTransactions.Add(transaction);
             }
 
-            else if (pendingTransactions.Count >= 3)
+            var blockchain = await GetBlockchain();
+            var latestBlock = blockchain.Last();
+
+            // Create new block if we have enough transactions
+            if (_pendingTransactions.Count >= 3)
             {
-                var blockchain = await LoadBlockchain();
-                var latestBlock = blockchain.Last();
+                var transactionsToAdd = new List<StorageCommitmentTransaction>();
+
+                lock (_lock)
+                {
+                    transactionsToAdd.AddRange(_pendingTransactions);
+                    _pendingTransactions.Clear();
+                }
+
                 var newBlock = new Block
                 {
                     Index = latestBlock.Index + 1,
                     Timestamp = DateTime.UtcNow,
                     PreviousHash = latestBlock.BlockHash,
-                    Transactions = pendingTransactions,
+                    Transactions = transactionsToAdd,
                     BlockHash = string.Empty // Temporary empty hash
                 };
 
                 newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
                 newBlock.BlockHash = CalculateBlockHash(newBlock);
-                blockchain.Add(newBlock);
 
+                blockchain.Add(newBlock);
                 await SaveBlockchain(blockchain);
+
+                // Broadcast new block to network
+                await BroadcastNewBlock(newBlock);
+            }
+        }
+
+        private static async Task BroadcastNewBlock(Block newBlock)
+        {
+            var onlineNodes = await GetOnlineNodes();
+            if (onlineNodes.Count > 0)
+            {
+                var blockJson = JsonConvert.SerializeObject(newBlock);
+                foreach (var node in onlineNodes)
+                {
+                    await p2pService.SendUDPmsg(node.ipAddress, node.port, "NEWBLOCK", blockJson);
+                }
             }
         }
 
@@ -98,7 +129,6 @@ namespace Test1.Models
             if (newBlockchain == null || newBlockchain.Count == 0)
                 throw new ArgumentException("Blockchain cannot be empty");
 
-            // Validate the new blockchain
             if (!ValidateBlockchain(newBlockchain))
                 throw new InvalidOperationException("Invalid blockchain received");
 
@@ -110,21 +140,30 @@ namespace Test1.Models
             try
             {
                 if (!File.Exists(_blockchainPath))
-                    return null;
+                    return new List<Block>();
 
                 var json = await File.ReadAllTextAsync(_blockchainPath);
-                return JsonConvert.DeserializeObject<List<Block>>(json);
+                return JsonConvert.DeserializeObject<List<Block>>(json) ?? new List<Block>();
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                Console.WriteLine($"Error loading blockchain: {ex.Message}");
+                return new List<Block>();
             }
         }
 
         private static async Task SaveBlockchain(List<Block> blockchain)
         {
-            var json = JsonConvert.SerializeObject(blockchain, Formatting.Indented);
-            await File.WriteAllTextAsync(_blockchainPath, json);
+            try
+            {
+                var json = JsonConvert.SerializeObject(blockchain, Formatting.Indented);
+                await File.WriteAllTextAsync(_blockchainPath, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving blockchain: {ex.Message}");
+                throw;
+            }
         }
 
         private static bool ValidateBlockchain(List<Block> blockchain)
