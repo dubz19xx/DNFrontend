@@ -72,33 +72,38 @@ namespace Test1.Models
 
         public static async Task AddTransaction(StorageCommitmentTransaction transaction)
         {
-            // Create a DEEP COPY of the transaction to prevent reference issues
-            var transactionCopy = new StorageCommitmentTransaction
+            // First check if this transaction already exists in pending or blockchain
+            bool isDuplicate = await IsDuplicateTransaction(transaction.ChunkHash);
+            if (isDuplicate)
             {
-                TransactionType = transaction.TransactionType,
-                ChunkHash = transaction.ChunkHash,
-                NodeId = transaction.NodeId,
-                Timestamp = transaction.Timestamp
-            };
-
-            List<StorageCommitmentTransaction> transactionsToAdd = null;
+                Console.WriteLine($"Duplicate transaction detected and skipped: {transaction.ChunkHash}");
+                return;
+            }
 
             lock (_lock)
             {
-                // Add the COPY, not the original
-                _pendingTransactions.Add(transactionCopy);
+                // Check again inside lock to prevent race conditions
+                if (_pendingTransactions.Any(t => t.ChunkHash == transaction.ChunkHash))
+                    return;
 
-                if (_pendingTransactions.Count >= 3)
+                _pendingTransactions.Add(transaction);
+            }
+
+            // Only proceed if we have enough unique transactions
+            if (_pendingTransactions.Count >= 3)
+            {
+                List<StorageCommitmentTransaction> transactionsToAdd;
+                List<Block> blockchain;
+                Block latestBlock;
+
+                lock (_lock)
                 {
                     transactionsToAdd = new List<StorageCommitmentTransaction>(_pendingTransactions);
                     _pendingTransactions.Clear();
                 }
-            }
 
-            if (transactionsToAdd != null)
-            {
-                var blockchain = await GetBlockchain();
-                var latestBlock = blockchain.Last();
+                blockchain = await GetBlockchain();
+                latestBlock = blockchain.Last();
 
                 var newBlock = new Block
                 {
@@ -109,17 +114,6 @@ namespace Test1.Models
                     BlockHash = string.Empty
                 };
 
-                // Verify transactions are unique in this block
-                var uniqueHashes = new HashSet<string>();
-                foreach (var t in newBlock.Transactions)
-                {
-                    if (!uniqueHashes.Add(t.ChunkHash))
-                    {
-                        Console.WriteLine($"Duplicate transaction detected: {t.ChunkHash}");
-                        // Handle duplicate (either skip or throw)
-                    }
-                }
-
                 newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
                 newBlock.BlockHash = CalculateBlockHash(newBlock);
 
@@ -129,6 +123,23 @@ namespace Test1.Models
                 _ = Task.Run(() => BroadcastNewBlock(newBlock));
             }
         }
+
+        private static async Task<bool> IsDuplicateTransaction(string chunkHash)
+        {
+            // Check pending transactions
+            lock (_lock)
+            {
+                if (_pendingTransactions.Any(t => t.ChunkHash == chunkHash))
+                    return true;
+            }
+
+            // Check existing blockchain
+            var blockchain = await GetBlockchain();
+            return blockchain
+                .SelectMany(b => b.Transactions)
+                .Any(t => t.ChunkHash == chunkHash);
+        }
+
         private static async Task BroadcastNewBlock(Block newBlock)
         {
             var onlineNodes = await GetOnlineNodes();
