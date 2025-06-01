@@ -164,7 +164,7 @@ namespace Test1.Models
             await SaveBlockchain(newBlockchain);
         }
 
-        private static async Task<List<Block>> LoadBlockchain()
+        public static async Task<List<Block>> LoadBlockchain()
         {
             try
             {
@@ -181,7 +181,7 @@ namespace Test1.Models
             }
         }
 
-        private static async Task SaveBlockchain(List<Block> blockchain)
+        public static async Task SaveBlockchain(List<Block> blockchain)
         {
             try
             {
@@ -221,7 +221,7 @@ namespace Test1.Models
             return true;
         }
 
-        private static string CalculateBlockHash(Block block)
+        public static string CalculateBlockHash(Block block)
         {
             return CalculateHash(block.Index, block.Timestamp, block.PreviousHash, block.MerkleRoot);
         }

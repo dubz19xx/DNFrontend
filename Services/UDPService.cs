@@ -141,6 +141,42 @@ namespace Test1.Services
                         StorageCommitmentTransaction transaction = JsonConvert.DeserializeObject<StorageCommitmentTransaction>(strTransaction);
                         Blockchain.AddTransaction(transaction);
                     }
+                    // In the ReceiveLoopAsync method, add this else-if condition:
+                    else if (recData.StartsWith("NEWBLOCK|"))
+                    {
+                        string blockJson = recData.Split('|')[1];
+                        Block newBlock = JsonConvert.DeserializeObject<Block>(blockJson);
+
+                        // Get current blockchain
+                        List<Block> blockchain = await Blockchain.GetBlockchain();
+
+                        // Check if this block is newer than our latest
+                        if (newBlock.Index > blockchain.Last().Index)
+                        {
+                            // Validate the new block
+                            if (newBlock.PreviousHash == blockchain.Last().BlockHash &&
+                                newBlock.BlockHash == Blockchain.CalculateBlockHash(newBlock))
+                            {
+                                blockchain.Add(newBlock);
+                                await Blockchain.SaveBlockchain(blockchain);
+                                LogMessage?.Invoke($"Added new block #{newBlock.Index} from {result.RemoteEndPoint}");
+
+                            }
+                            else
+                            {
+                                LogMessage?.Invoke($"Received invalid block #{newBlock.Index} from {result.RemoteEndPoint}");
+                            }
+                        }
+                        else if (newBlock.Index == blockchain.Last().Index)
+                        {
+                            // Potential fork - we might want to handle this case
+                            LogMessage?.Invoke($"Received competing block #{newBlock.Index} from {result.RemoteEndPoint}");
+                        }
+                        else
+                        {
+                            LogMessage?.Invoke($"Received older block #{newBlock.Index} from {result.RemoteEndPoint}");
+                        }
+                    }
                     else if (recData.StartsWith("DOWNLOADSHARD|"))
                     {
                         string shardHash = recData.Split("|")[2];
