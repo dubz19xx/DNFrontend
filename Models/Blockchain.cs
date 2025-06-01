@@ -96,10 +96,11 @@ namespace Test1.Models
                     Index = latestBlock.Index + 1,
                     Timestamp = DateTime.UtcNow,
                     PreviousHash = latestBlock.BlockHash,
-                    Transactions = transactionsToAdd,
+                    Transactions = _pendingTransactions,
                     BlockHash = string.Empty // Temporary empty hash
                 };
 
+                _pendingTransactions.Clear();
                 newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
                 newBlock.BlockHash = CalculateBlockHash(newBlock);
 
