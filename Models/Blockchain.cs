@@ -10,13 +10,15 @@ using Test1.Services;
 using Windows.ApplicationModel.Store.Preview.InstallControl;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.IO;
+using Test1.Utilities;
 
 namespace Test1.Models
 {
     internal class Blockchain
     {
         public static string NodeAddress;
-        public static List<Block> blockchain = new List<Block>();
+        private static List<Block> _blockchain;
         public static Block GenesisBlock { get; private set; }
         public static Block LatestBlock { get; private set; }
 
@@ -29,6 +31,23 @@ namespace Test1.Models
 
         public Blockchain()
         {
+        }
+
+        public static List<Block> blockchain
+        {
+            get
+            {
+                if (_blockchain == null)
+                {
+                    _blockchain = LoadBlockchainFromFile().GetAwaiter().GetResult();
+                }
+                return _blockchain;
+            }
+            private set
+            {
+                _blockchain = value;
+                SaveBlockchainToFile().GetAwaiter().GetResult();
+            }
         }
 
         public static void AddTransaction(StorageCommitmentTransaction transaction)
@@ -51,7 +70,7 @@ namespace Test1.Models
                 }
                 else
                 {
-                    block.Index = LatestBlock.Index + 1;  // Changed from Index++ to Index + 1
+                    block.Index = LatestBlock.Index + 1;
                     block.PreviousHash = LatestBlock.BlockHash;
                     block.PreviousBlock = LatestBlock;
                 }
@@ -61,10 +80,45 @@ namespace Test1.Models
                 blockchain.Add(block);
 
                 LatestBlock = block;
+                pendingTransactions.Clear();
 
+                // Save to file after adding block
+                SaveBlockchainToFile().GetAwaiter().GetResult();
             }
         }
 
+        private static async Task SaveBlockchainToFile()
+        {
+            try
+            {
+                string json = JsonConvert.SerializeObject(_blockchain, Formatting.Indented);
+                await File.WriteAllTextAsync(FileHelper.blockchainPath, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving blockchain: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static async Task<List<Block>> LoadBlockchainFromFile()
+        {
+            try
+            {
+                if (!File.Exists(FileHelper.blockchainPath))
+                {
+                    return new List<Block>(); // Return empty blockchain if file doesn't exist
+                }
+
+                string json = await File.ReadAllTextAsync(FileHelper.blockchainPath);
+                return JsonConvert.DeserializeObject<List<Block>>(json) ?? new List<Block>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading blockchain: {ex.Message}");
+                return new List<Block>(); // Return empty blockchain if error occurs
+            }
+        }
 
         public static async Task<List<OnlineNode>> GetOnlineNodes()
         {
@@ -76,58 +130,52 @@ namespace Test1.Models
             nodes.RemoveAll(node => node.dnAddress == AuthService.nodeAddress);
 
             return nodes;
-
         }
 
         public static async Task<OnlineNode> SelectBestNode()
         {
             List<OnlineNode> onlineNodes = await GetOnlineNodes();
-            var random = new Random(); 
+            var random = new Random();
             int index = random.Next(onlineNodes.Count);
             return onlineNodes[index];
         }
 
         public static async Task InitializeBlockchainAsync()
         {
-
-            //start udp listener and puncher
-            udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
+            // Start udp listener and puncher
+            udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
-
 
             udpService.StartHolePunchingAsync();
 
-            //get online nodes
+            // Get online nodes
             List<OnlineNode> onlineNodesList = await GetOnlineNodes();
 
-            //if no one else online create a new blockchain
+            // If no one else online create a new blockchain
             if (onlineNodesList.Count > 0)
             {
-                //download blockchain from other online node
+                // Download blockchain from other online node
                 await p2pService.PunchPeers(onlineNodesList);
-                foreach(OnlineNode node in onlineNodesList)
+                foreach (OnlineNode node in onlineNodesList)
                 {
                     await p2pService.SendUDPmsg(node.ipAddress, node.port, "DOWNLOADBC");
                 }
             }
             else
             {
-                //create new blockchain
+                // Create new blockchain
                 GenesisBlock = CreateGenesisBlock();
                 LatestBlock = GenesisBlock;
-                blockchain.Add(LatestBlock);
+                blockchain = new List<Block> { GenesisBlock };
+                await SaveBlockchainToFile();
             }
-
-            
-
         }
 
         public static void UpdateBlockchain(List<Block> newBC)
         {
             blockchain = new List<Block>(newBC);
-
-            // Update the latest block reference
             LatestBlock = blockchain.Last();
+            SaveBlockchainToFile().GetAwaiter().GetResult();
         }
 
         public static Block CreateGenesisBlock()
@@ -137,7 +185,7 @@ namespace Test1.Models
                 Index = 0,
                 Timestamp = DateTime.Now,
                 PreviousHash = string.Empty,
-                Transactions = new List<StorageCommitmentTransaction>(), 
+                Transactions = new List<StorageCommitmentTransaction>(),
             };
         }
 
@@ -161,16 +209,13 @@ namespace Test1.Models
             LatestBlock = newBlock;
 
             blockchain.Add(newBlock);
+            SaveBlockchainToFile().GetAwaiter().GetResult();
         }
-
-
 
         // Retrieve the globally stored blockchain
         public static List<Block> GetBlockchain()
         {
             return blockchain;
         }
-
-
     }
 }

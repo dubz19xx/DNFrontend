@@ -10,7 +10,7 @@ namespace Test1.Services
 {
     public class NetworkService
     {
-        private static string baseURL = "https://dbserver01.azurewebsites.net/api/";
+        private static string baseURL = "https://dbfinaldn.azurewebsites.net/api/";
         public static async Task<HttpResponseMessage> SendGetRequest(string URL)
         {
             string requestURL = baseURL + URL;

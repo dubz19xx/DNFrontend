@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     Title="BlankWindow1">
 
-    <Grid >
+    <Grid>
         <Image Source="\Assets\1155017.jpg" Stretch="UniformToFill"/>
 
 

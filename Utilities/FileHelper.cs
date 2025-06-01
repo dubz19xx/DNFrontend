@@ -44,6 +44,8 @@ namespace Test1.Utilities
 
         public static string downloadPath;
 
+        public static string blockchainPath;
+
         public FileHelper(string username)
 
         {
@@ -61,6 +63,8 @@ namespace Test1.Utilities
             configPath = Path.Combine(userFolderPath, "config");
 
             downloadPath = Path.Combine(userFolderPath, "downloads");
+
+            blockchainPath = Path.Combine(userFolderPath, "blockchain.json");
         }
 
 

@@ -109,7 +109,7 @@ namespace Test1.Services
                     if (TryProcessChunk(result.Buffer, result.RemoteEndPoint))
                         continue;
 
-                    // All your original handlers like PUNCHPEER, DOWNLOADBC, etc., remain untouched below:
+                    // All your original handlers like PUNCHPEER, DOWNLOADBC, etc.
                     string recData = dataStr;
                     if (recData.StartsWith("PUNCHPEER|"))
                     {
@@ -254,7 +254,7 @@ namespace Test1.Services
                     string fullMessage = Encoding.UTF8.GetString(fullData);
                     string newBlockchain = fullMessage.Split('|')[1];
                     List<Block> deserializedBC = JsonConvert.DeserializeObject<List<Block>>(newBlockchain);
-                    Blockchain.blockchain = deserializedBC;
+                    Blockchain.UpdateBlockchain(deserializedBC);
                 }
                 // Add other message types as needed
             }

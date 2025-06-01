@@ -70,7 +70,7 @@ public class P2PService
 
     public async Task PunchPeers(List<OnlineNode> nodes)
     {
-        await SendUDPmsg("4.188.232.157", 12345, "PUNCHPEERS",
+        await SendUDPmsg("74.225.135.66", 12345, "PUNCHPEERS",
                         JsonConvert.SerializeObject(nodes));
         await Task.Delay(5000);
     }
