@@ -27,19 +27,18 @@ namespace Test1.Models
             _blockchain = new List<Block>();
         }
 
-        public static async Task InitializeBlockchainAsync()
+        public static async Task InitializeBlockchainAsync(bool forceNewChain = false)
         {
             // Initialize UDP services
-            udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
+            udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
             await udpService.StartHolePunchingAsync();
 
             // Load or create blockchain
-            _blockchain = await LoadBlockchainFromFile();
-
-            if (_blockchain.Count == 0)
+            if (forceNewChain || !File.Exists(FileHelper.blockchainPath))
             {
-                // Create new blockchain
+                // Create new blockchain with genesis block
+                _blockchain = new List<Block>();
                 GenesisBlock = CreateGenesisBlock();
                 LatestBlock = GenesisBlock;
                 _blockchain.Add(GenesisBlock);
@@ -47,9 +46,31 @@ namespace Test1.Models
             }
             else
             {
-                // Initialize from loaded blockchain
-                GenesisBlock = _blockchain.First();
-                LatestBlock = _blockchain.Last();
+                // Load existing blockchain
+                _blockchain = await LoadBlockchainFromFile();
+
+                if (_blockchain.Count == 0)
+                {
+                    // Handle empty file case
+                    GenesisBlock = CreateGenesisBlock();
+                    LatestBlock = GenesisBlock;
+                    _blockchain.Add(GenesisBlock);
+                    await SaveBlockchainToFile();
+                }
+                else
+                {
+                    // Initialize from loaded blockchain
+                    GenesisBlock = _blockchain[0];
+                    LatestBlock = _blockchain[_blockchain.Count - 1];
+
+                    // Validate loaded blockchain
+                    if (!ValidateBlockchain())
+                    {
+                        Console.WriteLine("Invalid blockchain detected, creating new one");
+                        await InitializeBlockchainAsync(true); // Force new chain
+                        return;
+                    }
+                }
             }
 
             // Sync with network if nodes available
