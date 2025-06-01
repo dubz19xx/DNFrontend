@@ -72,36 +72,44 @@ namespace Test1.Models
 
         public static async Task AddTransaction(StorageCommitmentTransaction transaction)
         {
+            List<StorageCommitmentTransaction> transactionsToAdd = null;
+
             lock (_lock)
             {
                 _pendingTransactions.Add(transaction);
+
+                // Only proceed if we have enough transactions
+                if (_pendingTransactions.Count >= 3)
+                {
+                    // Create a NEW list with the current transactions
+                    transactionsToAdd = new List<StorageCommitmentTransaction>(_pendingTransactions);
+                    _pendingTransactions.Clear();
+                }
             }
 
-            var blockchain = await GetBlockchain();
-            var latestBlock = blockchain.Last();
-
-            // Create new block if we have enough transactions
-            if (_pendingTransactions.Count >= 3)
+            if (transactionsToAdd != null)
             {
+                var blockchain = await GetBlockchain();
+                var latestBlock = blockchain.Last();
 
                 var newBlock = new Block
                 {
                     Index = latestBlock.Index + 1,
                     Timestamp = DateTime.UtcNow,
                     PreviousHash = latestBlock.BlockHash,
-                    Transactions = _pendingTransactions,
-                    BlockHash = string.Empty // Temporary empty hash
+                    // Use the copied list, not the original reference
+                    Transactions = transactionsToAdd,
+                    BlockHash = string.Empty
                 };
 
-                _pendingTransactions.Clear();
                 newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
                 newBlock.BlockHash = CalculateBlockHash(newBlock);
 
                 blockchain.Add(newBlock);
                 await SaveBlockchain(blockchain);
 
-                // Broadcast new block to network
-                await BroadcastNewBlock(newBlock);
+                // Fire-and-forget the broadcast (don't await)
+                _ = Task.Run(() => BroadcastNewBlock(newBlock));
             }
         }
 
