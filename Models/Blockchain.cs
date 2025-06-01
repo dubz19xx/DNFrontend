@@ -9,6 +9,7 @@ using System.IO;
 using Test1.Services;
 using Test1.Utilities;
 using System.Security.Cryptography;
+using System.Transactions;
 
 namespace Test1.Models
 {
@@ -17,9 +18,12 @@ namespace Test1.Models
         private static readonly string _blockchainPath = Path.Combine(FileHelper.userFolderPath, "blockchain.json");
         public static UDPService udpService;
         public static P2PService p2pService;
+        public static List<StorageCommitmentTransaction> pendingTransactions;
+
 
         public static async Task InitializeBlockchainAsync()
         {
+            pendingTransactions = new List<StorageCommitmentTransaction> { };
             // Ensure directory exists
             Directory.CreateDirectory(FileHelper.userFolderPath);
 
@@ -60,17 +64,17 @@ namespace Test1.Models
 
         public static async Task AddTransaction(StorageCommitmentTransaction transaction)
         {
-            var blockchain = await LoadBlockchain();
-            var pendingTransactions = new List<StorageCommitmentTransaction> { transaction };
+
 
             // Get existing pending transactions if any
-            if (blockchain.Last().Transactions.Count < 3)
+            if (pendingTransactions.Count < 3)
             {
-                pendingTransactions.AddRange(blockchain.Last().Transactions);
+                pendingTransactions.Append(transaction);
             }
 
-            if (pendingTransactions.Count >= 3)
+            else if (pendingTransactions.Count >= 3)
             {
+                var blockchain = await LoadBlockchain();
                 var latestBlock = blockchain.Last();
                 var newBlock = new Block
                 {
