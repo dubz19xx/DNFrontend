@@ -77,7 +77,7 @@ namespace Test1.Models
 
                 block.MerkleRoot = block.CalculateMerkleRoot();
                 block.BlockHash = block.CalculateBlockHash();
-                blockchain.Add(block);
+                _blockchain.Add(block);
 
                 LatestBlock = block;
                 pendingTransactions.Clear();
@@ -166,15 +166,15 @@ namespace Test1.Models
                 // Create new blockchain
                 GenesisBlock = CreateGenesisBlock();
                 LatestBlock = GenesisBlock;
-                blockchain = new List<Block> { GenesisBlock };
+                _blockchain = new List<Block> { GenesisBlock };
                 await SaveBlockchainToFile();
             }
         }
 
         public static void UpdateBlockchain(List<Block> newBC)
         {
-            blockchain = new List<Block>(newBC);
-            LatestBlock = blockchain.Last();
+            _blockchain = new List<Block>(newBC);
+            LatestBlock = _blockchain.Last();
             SaveBlockchainToFile().GetAwaiter().GetResult();
         }
 
@@ -208,14 +208,14 @@ namespace Test1.Models
             // Set the latest block to be the new block
             LatestBlock = newBlock;
 
-            blockchain.Add(newBlock);
+            _blockchain.Add(newBlock);
             SaveBlockchainToFile().GetAwaiter().GetResult();
         }
 
         // Retrieve the globally stored blockchain
         public static List<Block> GetBlockchain()
         {
-            return blockchain;
+            return _blockchain ?? (_blockchain = LoadBlockchainFromFile().GetAwaiter().GetResult());
         }
     }
 }
