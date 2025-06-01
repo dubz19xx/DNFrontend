@@ -1,11 +1,11 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using System.IO;
 using Test1.Services;
 using Test1.Utilities;
 
@@ -13,67 +13,184 @@ namespace Test1.Models
 {
     internal class Blockchain
     {
-        private static List<Block> _blockchain;
-        public static Block GenesisBlock { get; private set; }
-        public static Block LatestBlock { get; private set; }
-        private static List<StorageCommitmentTransaction> _pendingTransactions = new List<StorageCommitmentTransaction>();
-
-        public static string NodeAddress;
+        private static readonly string _blockchainPath = Path.Combine(FileHelper.userFolderPath, "blockchain.json");
         public static UDPService udpService;
         public static P2PService p2pService;
 
-        static Blockchain()
+        public static async Task InitializeBlockchainAsync()
         {
-            _blockchain = new List<Block>();
-        }
+            // Ensure directory exists
+            Directory.CreateDirectory(FileHelper.userFolderPath);
 
-        public static async Task InitializeBlockchainAsync(bool forceNewChain = false)
-        {
-            // Initialize UDP services
+            // Initialize network services
             udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
             await udpService.StartHolePunchingAsync();
 
-            // Load or create blockchain
-            if (forceNewChain || !File.Exists(FileHelper.blockchainPath))
+            // Create blockchain file if it doesn't exist
+            if (!File.Exists(_blockchainPath))
             {
-                // Create new blockchain with genesis block
-                _blockchain = new List<Block>();
-                GenesisBlock = CreateGenesisBlock();
-                LatestBlock = GenesisBlock;
-                _blockchain.Add(GenesisBlock);
-                await SaveBlockchainToFile();
-            }
-            else
-            {
-                // Load existing blockchain
-                _blockchain = await LoadBlockchainFromFile();
-
-                if (_blockchain.Count == 0)
-                {
-                    // Handle empty file case
-                    GenesisBlock = CreateGenesisBlock();
-                    LatestBlock = GenesisBlock;
-                    _blockchain.Add(GenesisBlock);
-                    await SaveBlockchainToFile();
-                }
-                else
-                {
-                    // Initialize from loaded blockchain
-                    GenesisBlock = _blockchain[0];
-                    LatestBlock = _blockchain[_blockchain.Count - 1];
-
-                    // Validate loaded blockchain
-                    if (!ValidateBlockchain())
-                    {
-                        Console.WriteLine("Invalid blockchain detected, creating new one");
-                        await InitializeBlockchainAsync(true); // Force new chain
-                        return;
-                    }
-                }
+                await CreateNewBlockchain();
             }
 
-            // Sync with network if nodes available
+            // Sync with network
+            await SyncWithNetwork();
+        }
+
+        private static async Task CreateNewBlockchain()
+        {
+            var genesisBlock = new Block
+            {
+                Index = 0,
+                Timestamp = DateTime.UtcNow,
+                PreviousHash = "0",
+                Transactions = new List<StorageCommitmentTransaction>(),
+                BlockHash = CalculateHash(0, DateTime.UtcNow, "0", string.Empty)
+            };
+
+            var blockchain = new List<Block> { genesisBlock };
+            await SaveBlockchain(blockchain);
+        }
+
+        public static async Task<List<Block>> GetBlockchain()
+        {
+            return await LoadBlockchain() ?? new List<Block>();
+        }
+
+        public static async Task AddTransaction(StorageCommitmentTransaction transaction)
+        {
+            var blockchain = await LoadBlockchain();
+            var pendingTransactions = new List<StorageCommitmentTransaction> { transaction };
+
+            // Get existing pending transactions if any
+            if (blockchain.Last().Transactions.Count < 3)
+            {
+                pendingTransactions.AddRange(blockchain.Last().Transactions);
+            }
+
+            if (pendingTransactions.Count >= 3)
+            {
+                var latestBlock = blockchain.Last();
+                var newBlock = new Block
+                {
+                    Index = latestBlock.Index + 1,
+                    Timestamp = DateTime.UtcNow,
+                    PreviousHash = latestBlock.BlockHash,
+                    Transactions = pendingTransactions,
+                    BlockHash = string.Empty // Temporary empty hash
+                };
+
+                newBlock.MerkleRoot = CalculateMerkleRoot(newBlock.Transactions);
+                newBlock.BlockHash = CalculateBlockHash(newBlock);
+                blockchain.Add(newBlock);
+
+                await SaveBlockchain(blockchain);
+            }
+        }
+
+        public static async Task UpdateBlockchain(List<Block> newBlockchain)
+        {
+            if (newBlockchain == null || newBlockchain.Count == 0)
+                throw new ArgumentException("Blockchain cannot be empty");
+
+            // Validate the new blockchain
+            if (!ValidateBlockchain(newBlockchain))
+                throw new InvalidOperationException("Invalid blockchain received");
+
+            await SaveBlockchain(newBlockchain);
+        }
+
+        private static async Task<List<Block>> LoadBlockchain()
+        {
+            try
+            {
+                if (!File.Exists(_blockchainPath))
+                    return null;
+
+                var json = await File.ReadAllTextAsync(_blockchainPath);
+                return JsonConvert.DeserializeObject<List<Block>>(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static async Task SaveBlockchain(List<Block> blockchain)
+        {
+            var json = JsonConvert.SerializeObject(blockchain, Formatting.Indented);
+            await File.WriteAllTextAsync(_blockchainPath, json);
+        }
+
+        private static bool ValidateBlockchain(List<Block> blockchain)
+        {
+            if (blockchain == null || blockchain.Count == 0)
+                return false;
+
+            // Validate genesis block
+            if (blockchain[0].Index != 0 ||
+                blockchain[0].PreviousHash != "0" ||
+                blockchain[0].Transactions.Count != 0)
+                return false;
+
+            // Validate subsequent blocks
+            for (int i = 1; i < blockchain.Count; i++)
+            {
+                var block = blockchain[i];
+                var prevBlock = blockchain[i - 1];
+
+                if (block.Index != i ||
+                    block.PreviousHash != prevBlock.BlockHash ||
+                    block.BlockHash != CalculateBlockHash(block))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static string CalculateBlockHash(Block block)
+        {
+            return CalculateHash(block.Index, block.Timestamp, block.PreviousHash, block.MerkleRoot);
+        }
+
+        private static string CalculateHash(int index, DateTime timestamp, string previousHash, string merkleRoot)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var input = $"{index}{timestamp:O}{previousHash}{merkleRoot}";
+                var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+                return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+            }
+        }
+
+        private static string CalculateMerkleRoot(List<StorageCommitmentTransaction> transactions)
+        {
+            if (transactions == null || transactions.Count == 0)
+                return string.Empty;
+
+            var hashes = transactions.Select(t => t.ChunkHash).ToArray();
+            return CalculateMerkleRoot(hashes);
+        }
+
+        private static string CalculateMerkleRoot(string[] hashes)
+        {
+            // Simple Merkle root implementation
+            if (hashes.Length == 1)
+                return hashes[0];
+
+            var newHashes = new List<string>();
+            for (int i = 0; i < hashes.Length; i += 2)
+            {
+                var left = hashes[i];
+                var right = (i + 1 < hashes.Length) ? hashes[i + 1] : left;
+                newHashes.Add(CalculateHash(0, DateTime.UtcNow, left, right));
+            }
+
+            return CalculateMerkleRoot(newHashes.ToArray());
+        }
+
+        private static async Task SyncWithNetwork()
+        {
             var onlineNodes = await GetOnlineNodes();
             if (onlineNodes.Count > 0)
             {
@@ -85,125 +202,6 @@ namespace Test1.Models
             }
         }
 
-        public static void AddTransaction(StorageCommitmentTransaction transaction)
-        {
-            _pendingTransactions.Add(transaction);
-
-            if (_pendingTransactions.Count >= 3) // Create block after 3 transactions
-            {
-                CreateNewBlock(_pendingTransactions);
-                _pendingTransactions.Clear();
-            }
-        }
-
-        private static void CreateNewBlock(List<StorageCommitmentTransaction> transactions)
-        {
-            try
-            {
-                // Validate inputs
-                if (LatestBlock == null)
-                    throw new InvalidOperationException("LatestBlock is null - blockchain not properly initialized");
-
-                if (transactions == null || transactions.Count == 0)
-                    throw new ArgumentException("Transactions list cannot be null or empty", nameof(transactions));
-
-                // Create defensive copy of transactions
-                var transactionCopy = new List<StorageCommitmentTransaction>(transactions);
-
-                // Create new block with validation
-                var newBlock = new Block
-                {
-                    Index = LatestBlock.Index + 1,
-                    Timestamp = DateTime.UtcNow, // Using UTC for consistency
-                    PreviousHash = LatestBlock.BlockHash ?? throw new InvalidOperationException("Previous block hash is null"),
-                    PreviousBlock = LatestBlock,
-                    Transactions = transactionCopy
-                };
-
-                // Calculate hashes
-                newBlock.MerkleRoot = newBlock.CalculateMerkleRoot();
-                newBlock.BlockHash = newBlock.CalculateBlockHash();
-
-                // Validate before adding to chain
-                if (string.IsNullOrEmpty(newBlock.BlockHash))
-                    throw new InvalidOperationException("Block hash calculation failed");
-
-                if (newBlock.Index <= LatestBlock.Index)
-                    throw new InvalidOperationException("Block index must be greater than previous block");
-
-                // Add to blockchain
-                _blockchain.Add(newBlock);
-                LatestBlock = newBlock;
-
-                // Persist changes
-                SaveBlockchainToFile().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                // Log detailed error
-                Console.WriteLine($"Block creation failed: {ex}");
-
-                // Re-add transactions to pending if failed
-                if (transactions != null && transactions.Count > 0)
-                {
-                    _pendingTransactions.InsertRange(0, transactions);
-                }
-
-                throw; // Re-throw for caller to handle
-            }
-        }
-        public static void UpdateBlockchain(List<Block> newBlockchain)
-        {
-            // Validate the new blockchain isn't empty
-            if (newBlockchain == null || newBlockchain.Count == 0)
-                throw new ArgumentException("Blockchain cannot be empty");
-
-            // Completely replace existing blockchain
-            _blockchain = new List<Block>(newBlockchain);
-            GenesisBlock = _blockchain.First();
-            LatestBlock = _blockchain.Last();
-
-            SaveBlockchainToFile().GetAwaiter().GetResult();
-        }
-
-        private static async Task SaveBlockchainToFile()
-        {
-            try
-            {
-                string json = JsonConvert.SerializeObject(_blockchain, Formatting.Indented);
-                await File.WriteAllTextAsync(FileHelper.blockchainPath, json);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error saving blockchain: {ex.Message}");
-                throw;
-            }
-        }
-
-        private static async Task<List<Block>> LoadBlockchainFromFile()
-        {
-            try
-            {
-                if (!File.Exists(FileHelper.blockchainPath))
-                {
-                    return new List<Block>();
-                }
-
-                string json = await File.ReadAllTextAsync(FileHelper.blockchainPath);
-                return JsonConvert.DeserializeObject<List<Block>>(json) ?? new List<Block>();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading blockchain: {ex.Message}");
-                return new List<Block>();
-            }
-        }
-
-        public static List<Block> GetBlockchain()
-        {
-            return _blockchain ?? LoadBlockchainFromFile().GetAwaiter().GetResult();
-        }
-
         public static async Task<List<OnlineNode>> GetOnlineNodes()
         {
             HttpResponseMessage response = await NetworkService.SendGetRequest("OnlineNodes");
@@ -211,49 +209,6 @@ namespace Test1.Models
             List<OnlineNode> nodes = JsonConvert.DeserializeObject<List<OnlineNode>>(jsonResponse);
             nodes.RemoveAll(node => node.dnAddress == AuthService.nodeAddress);
             return nodes;
-        }
-
-        public static async Task<OnlineNode> SelectBestNode()
-        {
-            List<OnlineNode> onlineNodes = await GetOnlineNodes();
-            return onlineNodes.Count == 0 ? null : onlineNodes[new Random().Next(onlineNodes.Count)];
-        }
-
-        private static Block CreateGenesisBlock()
-        {
-            return new Block
-            {
-                Index = 0,
-                Timestamp = DateTime.Now,
-                PreviousHash = string.Empty,
-                Transactions = new List<StorageCommitmentTransaction>(),
-                BlockHash = "0" // Special hash for genesis block
-            };
-        }
-
-        public static bool ValidateBlockchain()
-        {
-            if (_blockchain == null || _blockchain.Count == 0)
-                return false;
-
-            // Verify genesis block
-            if (_blockchain[0].Index != 0 || _blockchain[0].PreviousHash != string.Empty)
-                return false;
-
-            // Verify subsequent blocks
-            for (int i = 1; i < _blockchain.Count; i++)
-            {
-                if (_blockchain[i].Index != i)
-                    return false;
-
-                if (_blockchain[i].PreviousHash != _blockchain[i - 1].BlockHash)
-                    return false;
-
-                if (_blockchain[i].BlockHash != _blockchain[i].CalculateBlockHash())
-                    return false;
-            }
-
-            return true;
         }
     }
 }
