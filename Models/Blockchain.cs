@@ -1,13 +1,14 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 using Test1.Services;
 using Test1.Utilities;
+using System.Security.Cryptography;
 
 namespace Test1.Models
 {
@@ -23,7 +24,7 @@ namespace Test1.Models
             Directory.CreateDirectory(FileHelper.userFolderPath);
 
             // Initialize network services
-            udpService = new UDPService("74.225.135.66", 12345, AuthService.nodeAddress);
+            udpService = new UDPService("4.188.232.157", 12345, AuthService.nodeAddress);
             p2pService = new P2PService(udpService);
             await udpService.StartHolePunchingAsync();
 
@@ -161,6 +162,14 @@ namespace Test1.Models
                 var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
                 return BitConverter.ToString(bytes).Replace("-", "").ToLower();
             }
+        }
+
+        public static async Task<OnlineNode> SelectBestNode()
+        {
+            List<OnlineNode> onlineNodes = await GetOnlineNodes();
+            var random = new Random();
+            int index = random.Next(onlineNodes.Count);
+            return onlineNodes[index];
         }
 
         private static string CalculateMerkleRoot(List<StorageCommitmentTransaction> transactions)

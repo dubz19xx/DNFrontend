@@ -473,7 +473,7 @@ namespace Test1.Utilities
                 Dictionary<string, string> chunkLocationMapping = new Dictionary<string, string>();
 
                 // Get the blockchain
-                List<Block> blockchain = Blockchain.GetBlockchain();
+                List<Block> blockchain = await Blockchain.GetBlockchain();
 
                 // Search each block's transactions for the chunk hashes
                 foreach (string chunkHash in chunkHashes)
